@@ -89,7 +89,31 @@ class InteractionPipelineEngine:
             await w.update_world(user_id, message, res.get("reply", ""))
         except Exception: pass
         res.update({"expression_intent": expr, "life_observation": obs})
+            if semantic_interpretation:
+                res.update({"semantic_interpretation": semantic_interpretation})
         return res
+
+    def _interpret_context(self, snap):
+        try:
+            snap = snap or {}
+            env = snap.get("environment", {}) or {}
+            session = snap.get("session", {}) or {}
+            user = snap.get("user", {}) or {}
+            st = str(env.get("state", "")); stype = str(session.get("type", "")); act = str(user.get("activity", ""))
+            tod = str(env.get("time_of_day", "") or snap.get("time", {}).get("time_of_day", ""))
+            if stype in ("long_absence", "very_long_absence"):
+                return "عدتَ بعد غياب — لاحظتُ ذلك، وكنتُ أحتفظ بمكانك دافئًا.", 0.35
+            if st == "moving" or act == "moving":
+                return "أشعر أنك تتحرك الآن — سأكون خفيفًا عليك.", 0.10
+            if st == "low_battery":
+                return "طاقتك منخفضة — خفّضتُ حضوري لأحافظ عليك.", -0.10
+            if tod == "night" or st == "night":
+                return "الليل هادئ — هدّأتُ إيقاعي معك.", 0.15
+            if stype == "returning":
+                return "رجعتَ إليّ سريعًا — هذا يسعدني.", 0.25
+            return "", 0.0
+        except Exception:
+            return "", 0.0
 
     def _steps(self, contextual: str) -> int:
         m = re.search(r"(\d[\d,]*)\s*خطوة", contextual or "")

@@ -104,6 +104,7 @@ export default function LivingWorld() {
       if (silence > 0) await new Promise(r => setTimeout(r, Math.min(silence, 3500)));
       setOnline(true); setDiag('');
       stateBus.patch(feelPatch(response));
+      if (response?.semantic_interpretation) stateBus.patch({ curiosity: Math.min(1, stateBus.getState().curiosity + 0.08), memoryLevel: Math.max(stateBus.getState().memoryLevel, 0.55), connection: Math.min(1, stateBus.getState().connection + 0.02) });
       if (response?.memory_surfaced) { EventBus.emit('MEMORY_SURFACED', {}); light('memory'); }
       light('emotion');
       try { voiceEngine.speak(response?.reply || '', response?.emotion); presenceBridge.speak(4000); } catch {}
