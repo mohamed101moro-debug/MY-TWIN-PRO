@@ -1,4 +1,4 @@
-import { useTwinStore } from '../../store/useTwinStore';
+import { session } from './SessionHolder';
 import { apiGet } from '../../lib/httpClient';
 import * as Notifications from 'expo-notifications';
 import { authService } from '../services/authService';
@@ -42,7 +42,7 @@ export class BootstrapCoordinator {
     setTimeout(() => { try { presenceBridge.start();
       try { sensorCollector.start(); } catch {}
       try {
-        const uid = useTwinStore.getState().userId || '';
+        const uid = session.userId || '';
         if (uid) apiGet(`/api/system/snapshot?user_id=${uid}`).then((d: any) => {
           const st = d?.state || {};
           const c = (v: any, fb: number) => { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fb; };

@@ -5,6 +5,7 @@ import { useRTL } from '../lib/useRTL';
 import { useAppTheme } from '../engine/colors';
 import { useTwinStore } from '../store/useTwinStore';
 import { bootstrapCoordinator } from '../src/core/BootstrapCoordinator';
+import { session } from '../src/core/SessionHolder';
 import { stateBus } from '../src/core/StateBus';
 import { presenceBridge } from '../src/core/PresenceBridge';
 import { EventBus } from '../src/core/EventBus';
@@ -51,6 +52,7 @@ export default function LivingWorld() {
   const light = useCallback((w: string, ms = 2600) => { setWing(w); if (wingT.current) clearTimeout(wingT.current); wingT.current = setTimeout(() => setWing(null), ms); }, []);
   useEffect(() => {
     if (userId) {
+      session.userId = userId;
       bootstrapCoordinator.bootstrap().catch(() => {});
       try { voiceEngine.start(); } catch {}
       light('perception', 3000);

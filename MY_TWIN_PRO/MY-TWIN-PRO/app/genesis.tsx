@@ -7,6 +7,7 @@ import { useFonts } from 'expo-font';
 import { Tajawal_800ExtraBold } from '@expo-google-fonts/tajawal';
 import ConsciousBeing from '../src/components/conscious/ConsciousBeing';
 import { presenceBridge } from '../src/core/PresenceBridge';
+import { session } from '../src/core/SessionHolder';
 import { stateBus } from '../src/core/StateBus';
 import { useTwinStore } from '../store/useTwinStore';
 import { authService } from '../src/services/authService';
@@ -81,7 +82,7 @@ export default function Genesis() {
   }, [touchActive]);
   const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false); const [authError, setAuthError] = useState('');
-  const enter = useCallback((userId: string) => { setAuth(userId); tryPlay('celebrate'); setTimeout(() => router.replace('/living-world'), 300); }, [setAuth]);
+  const enter = useCallback((userId: string) => { session.userId = userId; setAuth(userId); tryPlay('celebrate'); setTimeout(() => router.replace('/living-world'), 300); }, [setAuth]);
   const handleEmailAuth = async () => {
     if (!email.trim() || !password.trim()) return;
     setAuthLoading(true); setAuthError('');
