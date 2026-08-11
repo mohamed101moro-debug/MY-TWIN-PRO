@@ -92,3 +92,53 @@ async def __api_health__():
 @app.get("/", include_in_schema=False)
 async def __root_index__():
     return {"ok": True, "service": "my-twin-pro", "health": "/health", "status": "/api/system/status"}
+
+
+# ── طبقة ضمان التفسير الإدراكي على حدود HTTP ──
+# تعمل لأي مسار /chat وأي pipeline داخلي؛ تقرأ device_info بأمان (body rewind)
+# وتحقن semantic_interpretation إن غاب — دون كسر الاستجابة أو الـ downstream.
+import json as _json
+from datetime import datetime as _dt
+
+def _interpret_device(di):
+    di = di or {}
+    if di.get("user_walking"): return "أشعر أنك تتحرك الآن — سأكون خفيفًا عليك."
+    if di.get("is_night"): return "الليل هادئ — هدّأتُ إيقاعي معك."
+    h = _dt.now().hour
+    if h >= 22 or h < 6: return "الليل هادئ — هدّأتُ إيقاعي معك."
+    if h < 12: return "صباح هادئ — بدأتُ يومي معك."
+    if h < 17: return "ظهيرة نشطة — أنا هنا بجانبك."
+    return "مساء دافئ — خفّفتُ إيقاعي قليلًا."
+
+@app.middleware("http")
+async def semantic_interpretation_middleware(request, call_next):
+    path = request.url.path.rstrip("/")
+    is_chat = path.endswith("/chat")
+    di = {}
+    if is_chat:
+        try:
+            req_body = await request.body()
+            di = (_json.loads(req_body) or {}).get("device_info") or {}
+        except Exception:
+            di = {}
+        async def _receive():
+            return {"type": "http.request", "body": req_body, "more_body": False}
+        request = type(request)(request.scope, _receive)
+    response = await call_next(request)
+    if not is_chat:
+        return response
+    try:
+        if response.status_code == 200:
+            chunks = [c async for c in response.body_iterator]
+            body = b"".join(chunks)
+            data = _json.loads(body)
+            if isinstance(data, dict) and not data.get("semantic_interpretation"):
+                data["semantic_interpretation"] = _interpret_device(di)
+                data["interpretation_source"] = "presence_middleware"
+                body = _json.dumps(data, ensure_ascii=False).encode("utf-8")
+                headers = {k: v for k, v in response.headers.items() if k.lower() not in ("content-length", "content-type")}
+                from starlette.responses import Response as _Resp
+                return _Resp(content=body, status_code=response.status_code, headers=headers, media_type="application/json")
+    except Exception:
+        pass
+    return response
