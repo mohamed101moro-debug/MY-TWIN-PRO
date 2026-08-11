@@ -64,7 +64,7 @@ class InteractionPipelineEngine:
         try:
             from app.twin_state.context_awareness_engine import context_awareness_engine
             snap = await context_awareness_engine.get_full_context(user_id, device_info=device_info)
-            interp, bias = self._interpret_context(snap)
+            interp, bias = self._interpret_context(snap, device_info)
             if interp:
                 semantic_interpretation = interp
                 extra = (extra + "\n" if extra else "") + "[INTERPRETATION] " + interp + " دع نبرتك تعكس هذا."
@@ -103,7 +103,7 @@ class InteractionPipelineEngine:
             res.update({"semantic_interpretation": semantic_interpretation})
         return res
 
-    def _interpret_context(self, snap):
+    def _interpret_context(self, snap, device_info=None):
         try:
             snap = snap or {}
             env = snap.get("environment", {}) or {}
