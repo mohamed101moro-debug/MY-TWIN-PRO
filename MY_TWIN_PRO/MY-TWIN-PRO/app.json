@@ -1,0 +1,103 @@
+{
+  "expo": {
+    "name": "My Twin",
+    "slug": "my-twin",
+    "owner": "soulsync.ai",
+    "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "orientation": "portrait",
+    "scheme": "mytwin",
+    "userInterfaceStyle": "dark",
+    "icon": "./assets/brand/icon.png",
+    "splash": {
+      "image": "./assets/splash/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0014"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.soulsync.mytwin",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "My Twin needs microphone to hear your voice, feel your emotions, and whisper back to you.",
+        "NSSpeechRecognitionUsageDescription": "يستخدم التوأم التعرف على الصوت لتحويل كلامك إلى نص.",
+        "NSCameraUsageDescription": "My Twin needs camera to see you, follow your face, and respond to your presence with life-like movements.",
+        "NSMotionUsageDescription": "My Twin needs motion sensors to feel your steps, your movements, and sync its heartbeat with yours.",
+        "NSLocationWhenInUseUsageDescription": "My Twin uses your location to remember places you visit and connect memories to locations."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/brand/adaptive-icon.png",
+        "backgroundColor": "#0A0014"
+      },
+      "package": "com.soulsync.mytwin",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.VIBRATE",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS",
+        "com.android.vending.BILLING",
+        "CAMERA",
+        "RECORD_AUDIO",
+        "BODY_SENSORS",
+        "ACTIVITY_RECOGNITION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-localization",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "newArchEnabled": false,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "minSdkVersion": 24,
+            "enableProguardInReleaseBuilds": false
+          },
+          "ios": {
+            "newArchEnabled": false,
+            "deploymentTarget": "15.1"
+          }
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+          "delayAppMeasurement": true
+        }
+      ],
+      "./plugins/withGooglePlayBilling",
+      "expo-camera",
+      "expo-sensors"
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "7b96fc72-c7e0-4ebf-937f-e41354fc0ebe"
+      },
+      "API_URL": "my-twin-pro-production.up.railway.app",
+      "ENVIRONMENT": "production"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6cb78668-322b-476f-ab25-4136d85f8d68"
+    },
+    "sdkVersion": "52.0.0"
+  }
+}

@@ -1,0 +1,46 @@
+const React = require('react');
+
+const Animated = {
+  View: 'Animated.View',
+  Text: 'Animated.Text',
+  Image: 'Animated.Image',
+  ScrollView: 'Animated.ScrollView',
+  createAnimatedComponent: (component) => component,
+  timing: () => ({ start: (cb) => cb && cb() }),
+  spring: () => ({ start: (cb) => cb && cb() }),
+  loop: () => ({ start: (cb) => cb && cb() }),
+  sequence: () => ({ start: (cb) => cb && cb() }),
+  parallel: () => ({ start: (cb) => cb && cb() }),
+  delay: () => ({ start: (cb) => cb && cb() }),
+  Value: class { constructor(v) { this._value = v; } setValue(v) { this._value = v; } },
+};
+
+module.exports = {
+  View: 'View',
+  Text: 'Text',
+  TextInput: 'TextInput',
+  TouchableOpacity: 'TouchableOpacity',
+  TouchableWithoutFeedback: 'TouchableWithoutFeedback',
+  ScrollView: 'ScrollView',
+  FlatList: 'FlatList',
+  Image: 'Image',
+  StyleSheet: { create: (styles) => styles, flatten: (s) => s },
+  Dimensions: { get: () => ({ width: 390, height: 844 }) },
+  Platform: { OS: 'ios', select: (obj) => obj.ios },
+  StatusBar: 'StatusBar',
+  Animated,
+  NativeModules: {},
+  KeyboardAvoidingView: 'KeyboardAvoidingView',
+  ActivityIndicator: 'ActivityIndicator',
+  Switch: 'Switch',
+  Alert: { alert: jest.fn() },
+  Share: { share: jest.fn() },
+  Linking: { openURL: jest.fn(), canOpenURL: jest.fn() },
+  AppState: { addEventListener: jest.fn(), removeEventListener: jest.fn() },
+  AccessibilityInfo: {
+    isReduceMotionEnabled: jest.fn().mockResolvedValue(false),
+    isScreenReaderEnabled: jest.fn().mockResolvedValue(false),
+    addEventListener: jest.fn(),
+  },
+  Keyboard: { addListener: jest.fn(), dismiss: jest.fn() },
+};

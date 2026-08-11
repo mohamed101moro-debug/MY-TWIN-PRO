@@ -1,0 +1,17 @@
+{
+  "android": {
+    "icon": "assets/brand/icon.png",
+    "adaptive_icon": "assets/brand/adaptive-icon.png",
+    "notification_icon": "assets/brand/notification-icon.png",
+    "sizes": [48, 72, 96, 144, 192, 512]
+  },
+  "ios": {
+    "icon": "assets/brand/icon.png",
+    "sizes": [20, 29, 40, 60, 76, 83.5, 1024]
+  },
+  "store": {
+    "feature_graphic": "assets/brand/store/feature_graphic.png",
+    "screenshots": "assets/brand/store/screenshots/",
+    "promo_video": "assets/brand/store/promo.mp4"
+  }
+}
