@@ -1,5 +1,5 @@
-import { useTwinStore } from '../store/useTwinStore';
-import { apiGet } from '../lib/httpClient';
+import { useTwinStore } from '../../store/useTwinStore';
+import { apiGet } from '../../lib/httpClient';
 import * as Notifications from 'expo-notifications';
 import { authService } from '../services/authService';
 import { stateBus } from './StateBus';
