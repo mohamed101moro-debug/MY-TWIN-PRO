@@ -89,8 +89,6 @@ class InteractionPipelineEngine:
             await w.update_world(user_id, message, res.get("reply", ""))
         except Exception: pass
         res.update({"expression_intent": expr, "life_observation": obs})
-            if semantic_interpretation:
-                res.update({"semantic_interpretation": semantic_interpretation})
         return res
 
     def _interpret_context(self, snap):
