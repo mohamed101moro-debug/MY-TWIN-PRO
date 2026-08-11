@@ -76,3 +76,19 @@ async def kernel_status():
     return JSONResponse(content=soul_kernel.status())
 if __name__ == "__main__":
     import uvicorn; uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
+
+# ── جذر صحي: يخدم مسارات الصحة حتى تمر فحوص Railway بلا تعديل إعدادات ──
+@app.get("/health", include_in_schema=False)
+async def __root_health__():
+    return {"ok": True, "status": "healthy", "service": "my-twin-pro"}
+
+
+@app.get("/api/health", include_in_schema=False)
+async def __api_health__():
+    return {"ok": True, "status": "healthy", "service": "my-twin-pro"}
+
+
+@app.get("/", include_in_schema=False)
+async def __root_index__():
+    return {"ok": True, "service": "my-twin-pro", "health": "/health", "status": "/api/system/status"}
