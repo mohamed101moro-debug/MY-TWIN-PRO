@@ -60,6 +60,16 @@ class InteractionPipelineEngine:
         from app.twin_brain.unified_brain import unified_brain
         extra = f"[OBSERVATION] {device_info.get('contextual_prompt','')[:400]} [LIFE_LOG] {obs} " \
                 f"[RULE] استخدم الملاحظات الشخصية أعلاه فقط إن كانت ذات صلة؛ لا تخترع أرقامًا."
+        semantic_interpretation = ""
+        try:
+            from app.twin_state.context_awareness_engine import context_awareness_engine
+            snap = await context_awareness_engine.get_full_context(user_id, device_info=device_info)
+            interp, bias = self._interpret_context(snap)
+            if interp:
+                semantic_interpretation = interp
+                extra = (extra + "\n" if extra else "") + "[INTERPRETATION] " + interp + " دع نبرتك تعكس هذا."
+        except Exception:
+            pass
         res = await unified_brain.process(user_id, message, p.get("lang", "ar"),
             perception=p.get("perception"), history=p.get("history"),
             device_info=device_info, tier=p.get("tier", "free"), extra_context=extra)
@@ -89,6 +99,8 @@ class InteractionPipelineEngine:
             await w.update_world(user_id, message, res.get("reply", ""))
         except Exception: pass
         res.update({"expression_intent": expr, "life_observation": obs})
+        if semantic_interpretation:
+            res.update({"semantic_interpretation": semantic_interpretation})
         return res
 
     def _interpret_context(self, snap):
