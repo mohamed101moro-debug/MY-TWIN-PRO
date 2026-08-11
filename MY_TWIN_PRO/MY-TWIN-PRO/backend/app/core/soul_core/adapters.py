@@ -69,7 +69,9 @@ class InteractionPipelineEngine:
                 semantic_interpretation = interp
                 extra = (extra + "\n" if extra else "") + "[INTERPRETATION] " + interp + " دع نبرتك تعكس هذا."
         except Exception:
-            pass
+            interp, bias = self._interpret_context(None, device_info)
+            if interp:
+                semantic_interpretation = interp
         res = await unified_brain.process(user_id, message, p.get("lang", "ar"),
             perception=p.get("perception"), history=p.get("history"),
             device_info=device_info, tier=p.get("tier", "free"), extra_context=extra)
