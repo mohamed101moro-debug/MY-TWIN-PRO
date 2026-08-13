@@ -67,5 +67,20 @@ class TwinInternalState:
             outs = await m.retrieve(user_id, f"[ENGINE:{engine}]", limit=limit)
             return [p for p in (_parse(x.get("content", "")) for x in outs.get("memories", [])) if p]
         except Exception: return []
+    async def set_last_thought(self, user_id, thought):
+        st = await self.get_state(user_id); st["last_thought"] = str(thought)[:300]; await self._save_state(user_id, st)
+    async def add_pending_question(self, user_id, question):
+        st = await self.get_state(user_id); q = st.get("pending_questions") or []
+        q.append(str(question)); st["pending_questions"] = q[-10:]; await self._save_state(user_id, st)
+    async def get_mood_label(self, user_id, lang="ar"):
+        st = await self.get_state(user_id); m = st.get("mood", "calm")
+        ar = {"contemplative":"تأملي","energetic":"نشيط","calm":"هادئ","playful":"مرح","serious":"جاد","affectionate":"حنون","curious":"فضولي"}
+        return ar.get(m, m) if lang=="ar" else m
+    async def get_dominant_emotion_toward_user(self, user_id):
+        outs = await self._outputs(user_id, "emotional_momentum", 5)
+        if not outs: return "neutral"
+        freq = {}
+        for o in outs: freq[o.get("effective_emotion","neutral")] = freq.get(o.get("effective_emotion","neutral"),0)+1
+        return max(freq, key=freq.get)
 twin_internal_state = TwinInternalState()
 logger.info("✅ Twin Internal State v4.0 (full lifecycle)")

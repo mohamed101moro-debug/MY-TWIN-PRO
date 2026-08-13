@@ -73,4 +73,7 @@ async def calculate_score(total_messages: int, active_days: int, memory_count: i
     norm_mem = min(memory_count / 50, 1.0) * 100
     return min(norm_msgs * 0.3 + norm_days * 0.2 + norm_mem * 0.2 + bond_level * 0.3, 100.0)
 
+async def get_journey(user_id):
+    phase = await get_current_phase(user_id)
+    return {"phase": phase, "behavior": await get_behavior(phase), "daily_message": await get_daily_message(phase)}
 logger.info("✅ Journey Service v2.0 initialized")

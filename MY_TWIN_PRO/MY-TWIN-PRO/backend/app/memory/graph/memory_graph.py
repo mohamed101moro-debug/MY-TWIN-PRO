@@ -127,4 +127,10 @@ async def run_graph_mining(user_id: str) -> Dict[str, Any]:
     compression = await compress_graph(user_id)
     return {"patterns": patterns, "compression": compression}
 
+async def query_graph(user_id, query, limit=5):
+    try:
+        res = get_db().table(TABLE_NODES).select("*").eq("user_id", user_id).limit(200).execute()
+        q = (query or "").lower()
+        return [n for n in (res.data or []) if q in (n.get("content_summary") or "").lower()][:limit]
+    except Exception: return []
 logger.info("✅ Memory Graph with Pattern Miner initialized")

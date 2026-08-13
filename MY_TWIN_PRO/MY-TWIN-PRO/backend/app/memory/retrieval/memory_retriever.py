@@ -177,4 +177,6 @@ async def retrieve_full_context(
         },
     }
 
+async def get_recent_chat(user_id, limit=10):
+    return await get_conversation_archive(user_id, limit=limit)
 logger.info("✅ Memory Retriever Engine initialized (full)")

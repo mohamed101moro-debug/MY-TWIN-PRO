@@ -119,5 +119,28 @@ class UnifiedMemoryEngine:
             return result.count if hasattr(result, 'count') else len(result.data or [])
         except: return 0
 
+    async def get_engine_outputs(self, user_id, engine_name, limit=5):
+        return (await self.retrieve(user_id, f"[ENGINE:{engine_name}]", limit=limit)).get("memories", [])
+    async def get_capability_memories(self, user_id, capability, limit=10):
+        return (await self.retrieve(user_id, capability, limit=limit)).get("memories", [])
+    async def get_on_this_day(self, user_id, limit=5):
+        if not DB_AVAILABLE: return []
+        db = get_db(); now = datetime.now(timezone.utc)
+        res = db.table(TABLE_NAME).select("*").eq("user_id", user_id).order("created_at", desc=True).limit(300).execute()
+        out = []
+        for m in (res.data or []):
+            try:
+                dt = datetime.fromisoformat(m.get("created_at",""))
+                if (dt.month, dt.day) == (now.month, now.day) and dt.year < now.year: out.append(m)
+            except Exception: pass
+        return out[:limit]
+    async def get_most_used_capability(self, user_id):
+        if not DB_AVAILABLE: return ""
+        res = get_db().table(TABLE_NAME).select("arabic_category").eq("user_id", user_id).limit(500).execute()
+        freq = {}
+        for r in (res.data or []):
+            k = r.get("arabic_category") or ""
+            if k: freq[k] = freq.get(k, 0) + 1
+        return max(freq, key=freq.get) if freq else ""
 unified_memory_engine = UnifiedMemoryEngine()
 logger.info("✅ Unified Memory Engine v2.1 ready")

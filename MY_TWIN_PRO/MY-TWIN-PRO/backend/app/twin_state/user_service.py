@@ -84,4 +84,5 @@ class UserModel:
         }
 
 user_model = UserModel()
+async def get_user_profile(user_id): return await user_model.get_user(user_id)
 logger.info("✅ User Model v2.0 initialized")
