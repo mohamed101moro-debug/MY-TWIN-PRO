@@ -111,8 +111,8 @@ class BasePlugin(ABC):
         return self._ai_gateway
     
     @property
-    def memory(self):
-        """الوصول إلى طبقة الذاكرة (TCMA)"""
+    def tcma(self):
+        """الوصول إلى TCMA — حُرّر اسم memory ليستخدمه كل منسق لمحركه الفرعي"""
         if not self._memory_client:
             raise RuntimeError(f"Plugin '{self.plugin_id}' not initialized. Memory unavailable.")
         return self._memory_client

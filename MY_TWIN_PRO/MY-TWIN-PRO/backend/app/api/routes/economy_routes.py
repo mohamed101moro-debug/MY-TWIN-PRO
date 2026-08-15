@@ -104,3 +104,11 @@ async def energy_status(user_id: str = Depends(get_current_user_id),
     level = state.get("energy", 0.5)
     mood = _mood(level)
     return {"level": level, "mood": mood, "living_message": ENERGY[mood]}
+
+@router.post("/daily-login")
+async def daily_login(user_id: str = Depends(get_current_user_id)):
+    try:
+        get_db().table("profiles").update({"last_active": datetime.now(timezone.utc).isoformat()}).eq("id", user_id).execute()
+    except Exception:
+        pass
+    return {"success": True, "living_message": "سجلتُ حضورك اليوم. أنا ممتن."}

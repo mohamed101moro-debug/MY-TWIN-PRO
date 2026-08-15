@@ -12,6 +12,7 @@ import { EventBus } from '../src/core/EventBus';
 import { voiceEngine } from '../engine/voice/VoiceEngine';
 import { devicePresenceEngine } from '../engine/device/DevicePresenceEngine';
 import ConsciousBeing from '../src/components/conscious/ConsciousBeing';
+import SoulObservatory from '../src/world/SoulObservatory/SoulObservatory';
 import { Send, Mic, MicOff, Database, Eye, Heart, Sparkles, Target, Moon, X } from 'lucide-react-native';
 const { height } = Dimensions.get('window');
 const NET = { ar: 'يحتاج هذا إلى اتصال. ما زلت هنا لكل شيء آخر.', en: 'This needs a connection. I am still here for everything else.' };
@@ -125,7 +126,7 @@ export default function LivingWorld() {
   };
   return (
     <KeyboardAvoidingView style={[styles.container, { backgroundColor: colors.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View style={styles.entityWrapper}><ConsciousBeing size={Math.min(height * 0.3, 280)} /></View>
+      <View style={styles.entityWrapper}><TouchableOpacity activeOpacity={0.9} onPress={() => EventBus.emit('OPEN_SOUL_OBSERVATORY', {})}><ConsciousBeing size={Math.min(height * 0.3, 280)} /></TouchableOpacity></View>
       <View style={styles.capBlock}>
         <View style={styles.wingsRow}>
           {WINGS.map(w => (
@@ -170,7 +171,8 @@ export default function LivingWorld() {
         <TextInput style={[styles.input, { textAlign: rtl.textAlign, color: colors.text }]} value={inputText} onChangeText={setInputText} onSubmitEditing={handleSend} editable={!isThinking} placeholder={rtl.isRTL ? 'اكتب رسالتك...' : 'Write your message...'} placeholderTextColor={colors.textSecondary} />
         <TouchableOpacity onPress={handleSend} disabled={isThinking}><Send size={22} stroke={isThinking ? colors.textSecondary : colors.accent} /></TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    <SoulObservatory />
+</KeyboardAvoidingView>
   );
 }
 const styles = StyleSheet.create({

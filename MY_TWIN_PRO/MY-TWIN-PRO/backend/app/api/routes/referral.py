@@ -76,3 +76,18 @@ async def get_rewards(user_id: str = Depends(get_current_user_id)):
         return {"rewards": [], "error": str(e)}
 
 logger.info("✅ Referral Routes initialized")
+
+@router.get("/stats")
+async def get_stats(user_id: str = Depends(get_current_user_id)):
+    db = get_db(); code=None; points=0; referrals=0; rewards=[]
+    try:
+        r=db.table("referral_codes").select("code").eq("user_id",user_id).order("created_at",desc=True).limit(1).execute()
+        if r.data: code=r.data[0]["code"]
+    except Exception: pass
+    try:
+        rr=db.table("referral_rewards").select("*").eq("user_id",user_id).order("created_at",desc=True).limit(20).execute()
+        rewards=rr.data or []
+        points=sum(x.get("amount",0) for x in rewards if x.get("type")=="points")
+        referrals=len([x for x in rewards if "إحالة" in (x.get("description") or "")])
+    except Exception: pass
+    return {"code":code,"points":points,"referrals":referrals,"rewards":rewards,"soul_points_earned":points}
