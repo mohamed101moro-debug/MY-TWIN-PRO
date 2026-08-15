@@ -71,7 +71,7 @@ function useFullState() {
     setAwarenessData: awareness.setAwarenessData,
     setHasHydrated: awareness.setHasHydrated,
     resetToDefaults: () => { core.reset(); relationship.reset(); awareness.reset(); },
-    logout: () => { core.reset(); relationship.reset(); awareness.reset(); credits.resetDaily(); },
+    logout: () => { core.reset(); relationship.reset(); awareness.reset(); credits.resetDaily(); try { require('../lib/httpClient').removeToken(); } catch {} },
     reset: () => { core.reset(); },
     updateFromUnifiedResponse: (response: any) => {
       if (!response) return;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Linking } from 'react-native';
 import { useTwinStore } from '../../../store/useTwinStore';
 import { useAppTheme } from '../../../engine/colors';
 import { useRTL } from '../../../lib/useRTL';
@@ -40,6 +40,9 @@ export default function HelpWing() {
   const { colors } = useAppTheme();
   const t = CONTENT[rtl.isRTL ? 'ar' : 'en'];
   const { reset: resetStore } = useTwinStore();
+  const handleSync = async () => { try { const { unifiedBrainBridge } = require('../../core/UnifiedBrainBridge'); await unifiedBrainBridge.getTwinState(); Alert.alert('✅', t.sync); } catch { Alert.alert('⚠️', t.contact); } };
+  const handleExport = async () => { try { const { apiGet } = require('../../../lib/httpClient'); const r = await apiGet('/api/account/export'); Alert.alert('✅', `${t.export}: ${r?.total_records ?? 0}`); } catch { Alert.alert('⚠️', t.contact); } };
+  const handleReport = () => { Linking.openURL('mailto:support@soulsync.com'); };
 
   const handleReset = () => {
     Alert.alert(
@@ -69,18 +72,18 @@ export default function HelpWing() {
         </View>
       ))}
 
-      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <RefreshCw size={18} stroke={colors.accent} />
+      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={handleSync}>
+      <RefreshCw size={18} stroke={colors.accent} />
         <Text style={[styles.actionText, { color: colors.accent }]}>{t.sync}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Download size={18} stroke={colors.accent} />
+      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={handleExport}>
+      <Download size={18} stroke={colors.accent} />
         <Text style={[styles.actionText, { color: colors.accent }]}>{t.export}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <AlertTriangle size={18} stroke={colors.gold} />
+      <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={handleReport}>
+      <AlertTriangle size={18} stroke={colors.gold} />
         <Text style={[styles.actionText, { color: colors.gold }]}>{t.report}</Text>
       </TouchableOpacity>
 

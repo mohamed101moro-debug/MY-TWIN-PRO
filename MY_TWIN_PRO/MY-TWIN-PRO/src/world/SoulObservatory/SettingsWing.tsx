@@ -9,11 +9,8 @@ import { Globe, Moon, Volume2, Database, Shield, Bell, Languages } from 'lucide-
 export default function SettingsWing() {
   const rtl = useRTL();
   const { colors } = useAppTheme();
-  const { calmMode, toggleCalmMode, lang, setLang, theme, toggleTheme } = useTwinCoreStore();
+  const { calmMode, toggleCalmMode, lang, setLang, theme, toggleTheme, voiceEnabled, setVoiceEnabled, notificationsEnabled, setNotificationsEnabled, memoryRetentionEnabled, setMemoryRetentionEnabled } = useTwinCoreStore();
   const isDark = theme === 'dark';
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [notifications, setNotifications] = useState(true);
-  const [memoryRetention, setMemoryRetention] = useState(true);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -57,7 +54,7 @@ export default function SettingsWing() {
             <Database size={18} stroke={colors.accent} />
             <Text style={[styles.rowLabel, { color: colors.text }]}>{rtl.isRTL ? 'الاحتفاظ بالذكريات' : 'Memory Retention'}</Text>
           </View>
-          <Switch value={memoryRetention} onValueChange={setMemoryRetention} trackColor={{ false: colors.border, true: colors.accent + '50' }} thumbColor={memoryRetention ? colors.accent : colors.textSecondary} />
+          <Switch value={memoryRetentionEnabled} onValueChange={setMemoryRetentionEnabled} trackColor={{ false: colors.border, true: colors.accent + '50' }} thumbColor={memoryRetentionEnabled ? colors.accent : colors.textSecondary} />
         </View>
       </View>
 
@@ -68,7 +65,7 @@ export default function SettingsWing() {
             <Bell size={18} stroke={colors.accent} />
             <Text style={[styles.rowLabel, { color: colors.text }]}>{rtl.isRTL ? 'الإشارات' : 'Signals'}</Text>
           </View>
-          <Switch value={notifications} onValueChange={setNotifications} trackColor={{ false: colors.border, true: colors.accent + '50' }} thumbColor={notifications ? colors.accent : colors.textSecondary} />
+          <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} trackColor={{ false: colors.border, true: colors.accent + '50' }} thumbColor={notificationsEnabled ? colors.accent : colors.textSecondary} />
         </View>
       </View>
 

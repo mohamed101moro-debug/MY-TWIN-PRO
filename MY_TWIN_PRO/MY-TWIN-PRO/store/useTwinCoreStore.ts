@@ -24,6 +24,8 @@ export interface TwinCore {
   lang: Lang;
   calmMode: boolean;
   voiceEnabled: boolean;
+  notificationsEnabled: boolean;
+  memoryRetentionEnabled: boolean;
   voicePersonality: VoicePersonality;
   voiceSpeed: number;
   voicePitch: number;
@@ -36,6 +38,8 @@ export interface TwinCore {
   syncSystemTheme: () => void;
   toggleCalmMode: () => void;
   setVoiceEnabled: (enabled: boolean) => void;
+  setNotificationsEnabled: (v: boolean) => void;
+  setMemoryRetentionEnabled: (v: boolean) => void;
   setVoicePersonality: (personality: VoicePersonality) => void;
   setVoiceSpeed: (speed: number) => void;
   setVoicePitch: (pitch: number) => void;
@@ -61,6 +65,8 @@ const initialState = {
   lang: 'ar' as Lang,
   calmMode: false,
   voiceEnabled: true,
+  notificationsEnabled: true,
+  memoryRetentionEnabled: true,
   voicePersonality: 'friend' as VoicePersonality,
   voiceSpeed: 1.0,
   voicePitch: 1.0,
@@ -100,6 +106,8 @@ export const useTwinCoreStore = create<TwinCore>()(
       },
       toggleCalmMode: () => set((s) => ({ calmMode: !s.calmMode })),
       setVoiceEnabled: (enabled) => set({ voiceEnabled: enabled }),
+    setNotificationsEnabled: (v) => set({ notificationsEnabled: v }),
+    setMemoryRetentionEnabled: (v) => set({ memoryRetentionEnabled: v }),
       setVoicePersonality: (personality) => set({ voicePersonality: personality }),
       setVoiceSpeed: (speed) => set({ voiceSpeed: Math.max(0.5, Math.min(2.0, speed)) }),
       setVoicePitch: (pitch) => set({ voicePitch: Math.max(0.5, Math.min(2.0, pitch)) }),

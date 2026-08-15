@@ -7,6 +7,7 @@ const clamp01 = (n: unknown, fallback = 0) => { const v = Number(n); return Numb
 class PresenceBridge {
   private sensorTimer: ReturnType<typeof setInterval> | null = null;
   private unsubs: Array<() => void> = [];
+  private _lastPresentTs = 0;
   start(): void {
     if (this.sensorTimer) return;
     presenceEngine.start();
@@ -19,7 +20,7 @@ class PresenceBridge {
         movement: clamp01(Math.abs(magnitude - 1) * 2.2),
         proximity: sensors.proximity == null ? current.proximity : clamp01(1 - sensors.proximity / 100, current.proximity),
         ambientLight: sensors.lightLevel == null ? current.ambientLight : clamp01(Math.log10(Math.max(1, sensors.lightLevel) + 1) / 4, current.ambientLight),
-        userPresent: sensors.faceDetected || current.userPresent,
+        userPresent: sensors.faceDetected ? (() => { this._lastPresentTs = Date.now(); return true; })() : (Date.now() - this._lastPresentTs < 20000),
         voiceLevel: clamp01(sensors.audioLevel, current.voiceLevel),
       });
     }, 250);
