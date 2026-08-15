@@ -43,10 +43,9 @@ class BasePlugin(ABC):
         pass
     
     @property
-    @abstractmethod
     def description(self) -> str:
-        """وصف قصير لما تفعله الميزة"""
-        pass
+        """وصف قصير لما تفعله الميزة (افتراضي قابل للتجاوز)"""
+        return f"{self.plugin_name_ar} — {self.plugin_name_en} (v{self.version})"
     
     @property
     def dependencies(self) -> List[str]:

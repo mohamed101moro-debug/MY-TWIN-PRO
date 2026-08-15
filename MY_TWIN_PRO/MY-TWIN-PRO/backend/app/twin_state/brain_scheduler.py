@@ -32,7 +32,6 @@ class BrainScheduler:
         self._tasks.append(asyncio.create_task(self._run_loop("hourly", 3600, self._hourly_cycle)))
         self._tasks.append(asyncio.create_task(self._run_loop("daily", 86400, self._daily_cycle)))
         self._tasks.append(asyncio.create_task(self._run_loop("engine", 1800, self._engine_cycle)))
-        self._tasks.append(asyncio.create_task(self._run_loop("engine", 1800, self._engine_cycle)))
         logger.info("🧠 Brain Scheduler v3.0 started – 3 cycles (unified engines)")
 
     async def stop(self):
