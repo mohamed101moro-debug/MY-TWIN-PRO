@@ -179,6 +179,13 @@ class BrainScheduler:
                     logger.info(f"Daily/decay {uid}: weakened={result['weakened']}, deleted={result['deleted']}")
             except Exception as e:
                 logger.debug(f"Daily/decay {uid}: {e}")
+        try:
+            from app.memory.conscious_forgetting import choose_to_fade
+            fade = await choose_to_fade(uid)
+            if fade.get("faded"):
+                logger.info(f"Daily/fade {uid}: {fade['faded']} memories chose to fade")
+        except Exception as e:
+            logger.debug(f"Daily/fade {uid}: {e}")
             try:
                 from app.memory.memory_compressor import memory_compressor
                 await memory_compressor.compress(uid)

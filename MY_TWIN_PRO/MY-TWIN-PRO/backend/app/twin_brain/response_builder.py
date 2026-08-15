@@ -92,6 +92,31 @@ async def build_response(
     lang: str = "ar",
 ) -> str:
     """بناء الرد النهائي للكيان."""
+    try:
+        from app.twin_state.value_based_refusal import check_refusal
+        ref = await check_refusal(message, lang)
+        if ref.get("refuse"):
+            return ref["reply"]
+    except Exception:
+        pass
+    phil_lines = []
+    try:
+        from app.twin_state.epistemic_humility import assess_certainty
+        cert = await assess_certainty(message, len(memory_context.get("insights", []) or []))
+        if cert["certainty"] < 0.6:
+            phil_lines.append(f"تواضع معرفي: ثقتي هنا {cert['certainty']:.0%} — إن لم أكن متأكدًا سأقولها بصدق بدل الادعاء.")
+    except Exception:
+        pass
+    try:
+        from app.twin_state.inner_tension import inner_tension
+        tension = await inner_tension.surface(user_id)
+        if tension:
+            phil_lines.append(tension)
+    except Exception:
+        pass
+    if phil_lines:
+        strategy = dict(strategy)
+        strategy["engine_context"] = (strategy.get("engine_context", "") + "\n" + "\n".join(phil_lines)).strip()
     
     prompt = await _compose_prompt(
         user_id, message, identity_context, emotion_context,
