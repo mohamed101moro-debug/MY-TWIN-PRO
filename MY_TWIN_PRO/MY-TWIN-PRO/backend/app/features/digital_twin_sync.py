@@ -75,4 +75,16 @@ class DigitalTwinSync:
             "recommendation": last_sync.get("recommendation") if last_sync else None
         }
 
+    async def get_context(self, user_id: str) -> Dict[str, Any]:
+        """السياق الكامل للمزامنة: آخر مزامنة + توصية + عاطفة + سياق زمني."""
+        status = await self.get_status(user_id)
+        additions = []
+        try:
+            from app.features.temporal_context import temporal_engine
+            ctx = temporal_engine.get_current_context(user_id)
+            additions.append(f"الوقت: {ctx.get('time_of_day','')} | {ctx.get('day_type','')}")
+        except Exception:
+            pass
+        return {**status, "context_additions": additions}
+
 digital_twin_sync = DigitalTwinSync()

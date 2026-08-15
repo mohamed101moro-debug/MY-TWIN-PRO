@@ -141,6 +141,11 @@ async def _compose_prompt(
     
     # بناء الهوية الأساسية
     core_identity = CORE_IDENTITY.get(lang, CORE_IDENTITY["en"])
+    try:
+        from app.core.founding_charter import CHARTER_PRINCIPLES_PROMPT
+        core_identity += "\n" + CHARTER_PRINCIPLES_PROMPT.get(lang, CHARTER_PRINCIPLES_PROMPT["ar"])
+    except Exception:
+        pass
     
     if lang == "ar":
         prompt = f"""{core_identity}

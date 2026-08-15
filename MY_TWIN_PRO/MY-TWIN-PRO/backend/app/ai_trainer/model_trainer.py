@@ -73,6 +73,14 @@ class ModelTrainer:
             "num_epochs": num_epochs,
             "learning_rate": learning_rate,
         }
+    async def start_training(self, training_file: str, base_model=None, num_epochs: int = 3, learning_rate: float = 2e-4, use_lora: bool = True) -> Dict[str, Any]:
+        """نقطة الدخول الرسمية: تحويل البيانات + تجهيز السكريبت + تتبع المهمة."""
+        result = await self.prepare_and_train(training_file, base_model, num_epochs, learning_rate, use_lora)
+        if result.get("status") == "ready":
+            if not hasattr(self, "_last_job"): self._last_job = {}
+            self._last_job = {"script": result.get("script_path"), "base_model": result.get("base_model"), "epochs": num_epochs}
+            result["job"] = self._last_job
+        return result
 
     def _generate_training_script(self, data_file, base_model, output, epochs, lr, use_lora):
         lora_config = ""

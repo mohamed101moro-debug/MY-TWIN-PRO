@@ -6,13 +6,13 @@ Admin Routes v1.0 — للاستخدام الداخلي فقط
 """
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
-import logging
+import logging, os
 
 logger = logging.getLogger("admin_routes")
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 # ✅ مفتاح سري بسيط للتحقق من الصلاحية (يُستخدم من لوحة التحكم فقط)
-ADMIN_SECRET = "soulsync-admin-2026"
+ADMIN_SECRET = os.getenv("SOUL_SYNC_ADMIN_KEY", "")
 
 def verify_admin(secret: str):
     if secret != ADMIN_SECRET:

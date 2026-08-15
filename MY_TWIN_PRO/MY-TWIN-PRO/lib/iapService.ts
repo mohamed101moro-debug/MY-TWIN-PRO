@@ -257,8 +257,8 @@ async function verifyWithServer(
 
 function updateLocalTier(tier: string): void {
   try {
-    const { useTwinStore } = require('../store/useTwinStore');
-    useTwinStore.getState().setTier(tier as any);
+    const { useTwinCoreStore } = require('../store/useTwinCoreStore');
+    useTwinCoreStore.getState().setTier(tier as any);
     console.log('[IAP] ✅ Local tier updated:', tier);
   } catch (err) {
     console.warn('[IAP] updateLocalTier failed:', err);

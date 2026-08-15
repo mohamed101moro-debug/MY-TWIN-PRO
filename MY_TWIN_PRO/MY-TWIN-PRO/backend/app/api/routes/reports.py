@@ -90,7 +90,7 @@ async def get_daily_report(user_id: str = Query(...)) -> Dict[str, Any]:
 
         return {
             "status": "success",
-            "date": __import__('datetime').datetime.now().__str__("%Y-%m-%d"),
+            "date": __import__('datetime').datetime.now().strftime("%Y-%m-%d"),
             "mood": emotional.get("dominant_emotion", "neutral"),
             "recommendations": recs.get("recommendations", []),
         }
