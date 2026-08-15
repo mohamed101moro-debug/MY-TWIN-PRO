@@ -39,9 +39,9 @@ export default function HelpWing() {
   const rtl = useRTL();
   const { colors } = useAppTheme();
   const t = CONTENT[rtl.isRTL ? 'ar' : 'en'];
-  const { reset: resetStore } = useTwinStore();
-  const handleSync = async () => { try { const { unifiedBrainBridge } = require('../../core/UnifiedBrainBridge'); await unifiedBrainBridge.getTwinState(); Alert.alert('✅', t.sync); } catch { Alert.alert('⚠️', t.contact); } };
-  const handleExport = async () => { try { const { apiGet } = require('../../../lib/httpClient'); const r = await apiGet('/api/account/export'); Alert.alert('✅', `${t.export}: ${r?.total_records ?? 0}`); } catch { Alert.alert('⚠️', t.contact); } };
+  const { reset: resetStore, userId } = useTwinStore();
+  const handleSync = async () => { try { const { bootstrapCoordinator } = require('../../src/core/BootstrapCoordinator'); await bootstrapCoordinator.bootstrap(); Alert.alert('✅', t.sync); } catch { Alert.alert('⚠️', t.contact); } };
+  const handleExport = async () => { try { const { apiGet } = require('../../lib/httpClient'); const r = await apiGet(`/api/account/export?user_id=${userId}`); Alert.alert('✅', `${t.export}: ${r?.total_records ?? 0}`); } catch { Alert.alert('⚠️', t.contact); } };
   const handleReport = () => { Linking.openURL('mailto:support@soulsync.com'); };
 
   const handleReset = () => {

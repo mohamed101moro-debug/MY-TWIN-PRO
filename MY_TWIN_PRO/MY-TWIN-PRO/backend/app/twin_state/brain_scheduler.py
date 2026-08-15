@@ -293,45 +293,5 @@ class BrainScheduler:
     
 
 
-    # ═══════════════════════════════════════════════════════════
-    # دورة المحركات الذهنية — كل 30 دقيقة
-    # ═══════════════════════════════════════════════════════════
-    async def _engine_cycle(self):
-        """تشغيل المحركات الذهنية بشكل استباقي لكل مستخدم نشط"""
-        users = await self._get_active_users()
-        if not users:
-            return
-
-        from app.engine.goal.goal_engine import goal_engine
-        from app.engine.decision.decision_engine import decision_engine
-        from app.engine.identity.identity_engine import identity_engine
-        from app.engine.reflection.reflection_engine import reflection_engine
-        from app.engine.internal.internal_state_engine import internal_state_engine
-        from app.engine.energy.twin_energy_engine import twin_energy_engine
-        from app.engine.constitution.constitution_engine import constitution_engine
-        from app.memory.unified_memory import unified_memory_engine
-
-        for uid in users[:5]:
-            try:
-                # تقييم المحركات بشكل استباقي
-                goal = goal_engine.determine_goal("normal", "neutral", 50, "friend", "morning", [])
-                identity = identity_engine.evaluate(bond_level=50, interaction_count=0, memory_count=0)
-                decision = decision_engine.decide(goal["primary_goal"], identity["role"], 50, "neutral", 0.5, "normal", "morning")
-                internal = internal_state_engine.evaluate("neutral", 50, 0.7)
-                twin = twin_energy_engine.update(50, datetime.now(timezone.utc).hour)
-                reflection = reflection_engine.reflect(50, identity["role"])
-                
-                # تخزين المخرجات في TCMA
-                await unified_memory_engine.store_engine_output(uid, "goal", goal)
-                await unified_memory_engine.store_engine_output(uid, "identity", identity)
-                await unified_memory_engine.store_engine_output(uid, "internal", internal)
-                await unified_memory_engine.store_engine_output(uid, "twin_energy", twin)
-                await unified_memory_engine.store_engine_output(uid, "reflection", reflection)
-                
-                logger.debug(f"Engine cycle completed for {uid}")
-            except Exception as e:
-                logger.debug(f"Engine cycle failed for {uid}: {e}")
-    
-
-brain_scheduler = BrainScheduler()
+    brain_scheduler = BrainScheduler()
 logger.info("✅ Brain Scheduler v3.0 ready (Unified Engines + debounce)")
