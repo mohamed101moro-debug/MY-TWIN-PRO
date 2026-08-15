@@ -27,3 +27,18 @@ api_router.include_router(unified_chat.router)
 api_router.include_router(push.router)
 api_router.include_router(perception_snapshot.router)
 api_router.include_router(system_routes.router)
+
+# ── تسجيل الراوترات اليتيمة (محروس — لا يكسر الإقلاع) ──
+import logging as _lg
+logger=_lg.getLogger("routes")
+for _mod in ["goals","feedback","graph_routes","fingerprint_routes","passport_routes",
+             "awareness_routes","awareness_score_routes","consciousness_routes","meta_routes",
+             "onboarding","account","admin","ai_trainer_routes","avatar_routes","sync_routes",
+             "projects","stt_routes","tts","recommendations","stats",
+             "relationship_economy_routes","twin_state_routes","dev"]:
+    try:
+        import importlib as _il
+        _r=_il.import_module(f"app.api.routes.{_mod}")
+        api_router.include_router(_r.router)
+    except Exception as _e:
+        logger.warning(f"router {_mod} skipped: {_e}")

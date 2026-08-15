@@ -29,6 +29,46 @@ async def lifespan(app: FastAPI):
         from app.core.soul_core import soul_kernel
         await soul_kernel.boot(); logger.info("   ✅ Soul Kernel")
     except Exception as e: logger.error(f"   ❌ Soul Kernel: {e}")
+    try:
+        import importlib
+        from app.infrastructure.ai.ai_gateway import ai_gateway
+        from app.memory.unified_memory import unified_memory_engine
+        PLUGINS=[]
+        for mod,attr in [("app.features.study.athena_orchestrator","athena"),
+                         ("app.features.business.growth_hive_orchestrator","growth_hive"),
+                         ("app.features.code_lab.code_lab_orchestrator","code_lab"),
+                         ("app.features.creator.creator_orchestrator","creator"),
+                         ("app.features.life_coach.life_coach_orchestrator","life_coach"),
+                         ("app.features.dreams.dream_orchestrator","dream_orchestrator"),
+                         ("app.features.smart_home.smart_home_orchestrator","smart_home"),
+                         ("app.features.task_manager.pass_orchestrator","pass_assistant"),
+                         ("app.features.image_lab.image_orchestrator","image_lab")]:
+            try:
+                obj=getattr(importlib.import_module(mod),attr)
+                if hasattr(obj,"initialize"):
+                    ok=await obj.initialize(ai_gateway,unified_memory_engine)
+                else:
+                    if hasattr(obj,"set_ai_route"): obj.set_ai_route(ai_gateway.route)
+                    if hasattr(obj,"set_memory_client"): obj.set_memory_client(unified_memory_engine)
+                    ok=True
+                PLUGINS.append(f"{attr}:{'ok' if ok else 'fail'}")
+            except Exception:
+                PLUGINS.append(f"{attr}:skip")
+        logger.info(f"   🧩 Plugins: {PLUGINS}")
+    except Exception as e:
+        logger.error(f"   ❌ Plugins init: {e}")
+    try:
+        from app.twin_state.brain_scheduler import brain_scheduler
+        await brain_scheduler.start(); logger.info("   🧠 Brain Scheduler started")
+    except Exception as e:
+        logger.error(f"   ❌ Brain Scheduler: {e}")
+    try:
+        from app.features.unified_proactive_engine import unified_proactive
+        await unified_proactive.initialize()
+        from app.features.proactive_awareness import proactive_awareness
+        await proactive_awareness.start(); logger.info("   🔔 Proactive Awareness started")
+    except Exception as e:
+        logger.error(f"   ❌ Proactive: {e}")
     logger.info(f"🌟 MyTwin API v23.0.0 | profile={os.getenv('MYTWIN_RELEASE_PROFILE','production')}")
     yield
     try:
