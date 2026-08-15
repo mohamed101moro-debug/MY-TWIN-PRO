@@ -42,3 +42,13 @@ for _mod in ["goals","feedback","graph_routes","fingerprint_routes","passport_ro
         api_router.include_router(_r.router)
     except Exception as _e:
         logger.warning(f"router {_mod} skipped: {_e}")
+
+# ── PHASE6_REG: تسجيل شامل متسامح لكل الراوترات ──
+for _m in ["study_routes","creator_routes","dream_routes","image_lab_routes","task_manager_routes","smart_home_routes","consciousness_routes","awareness_routes","awareness_score_routes","meta_routes","onboarding","account","admin","ai_trainer_routes","avatar_routes","sync_routes","projects","stt_routes","tts","recommendations","stats","relationship_economy_routes","twin_state_routes","goals","feedback","graph_routes","fingerprint_routes","passport_routes","dev"]:
+    try:
+        import importlib as _il
+        _r=_il.import_module(f"app.api.routes.{_m}")
+        if not any(getattr(_r,"router",None) is getattr(_inc,"router",None) for _inc in []):
+            api_router.include_router(_r.router)
+    except Exception as _e:
+        import logging as _lg; _lg.getLogger("routes").warning(f"router {_m}: {_e}")

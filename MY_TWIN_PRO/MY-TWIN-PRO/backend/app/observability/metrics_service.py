@@ -6,7 +6,7 @@ Metrics Service v2.0 – تتبع مؤشرات الأداء مع دعم الإن
 - متوافق مع Alert Service
 """
 import time, logging, asyncio
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 

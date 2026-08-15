@@ -84,3 +84,10 @@ async def test_tcma(user_id: str):
     except Exception as e:
         results["identity"] = str(e)
     return results
+
+@router.post("/unlock-tier")
+async def unlock_tier(body: dict):
+    if body.get("secret") != os.getenv("DEV_SECRET", "devsecret123"):
+        raise HTTPException(403, "Wrong dev secret")
+    get_db().table("profiles").update({"tier": body.get("tier", "yearly")}).eq("id", body["user_id"]).execute()
+    return {"status": "ok", "tier": body.get("tier", "yearly")}
