@@ -12,7 +12,7 @@ GOVERNED = (
     "/api/awareness", "/api/consciousness", "/api/fingerprint", "/api/passport",
     "/api/graph", "/api/avatar", "/api/stt", "/api/tts", "/api/sync", "/api/push",
     "/api/projects", "/api/goals", "/api/feedback", "/api/reports", "/api/referral",
-)
+ "/api/chat", "/api/vision")
 TIER_NEED = {
     "/api/business": 1, "/api/life-coach": 1, "/api/content": 1,
     "/api/code-lab": 2, "/api/image-lab": 2, "/api/smart-home": 2,
