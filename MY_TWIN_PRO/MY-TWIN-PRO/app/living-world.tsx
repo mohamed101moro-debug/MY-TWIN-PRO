@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, ScrollView, Dimensions, Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { apiPost, apiGet } from '../lib/httpClient';
 import { useRTL } from '../lib/useRTL';
@@ -12,9 +12,11 @@ import { presenceBridge } from '../src/core/PresenceBridge';
 import { EventBus } from '../src/core/EventBus';
 import { voiceEngine } from '../engine/voice/VoiceEngine';
 import { devicePresenceEngine } from '../engine/device/DevicePresenceEngine';
+import { shareVision, sharedPresence } from '../engine/vision/VisionBridge';
+import { refreshPlace } from '../engine/place/PlaceBridge';
 import ConsciousBeing from '../src/components/conscious/ConsciousBeing';
 import SoulObservatory from '../src/world/SoulObservatory/SoulObservatory';
-import { Send, Mic, MicOff, Database, Eye, Heart, Sparkles, Target, Moon, X } from 'lucide-react-native';
+import { Send, Mic, MicOff, Database, Eye, Heart, Sparkles, Target, Moon, X, Camera } from 'lucide-react-native';
 const { height } = Dimensions.get('window');
 const NET = { ar: 'يحتاج هذا إلى اتصال. ما زلت هنا لكل شيء آخر.', en: 'This needs a connection. I am still here for everything else.' };
 const SRV = { ar: 'أنا هنا. أصغي إليك.', en: 'I am here. I listen.' };
@@ -44,6 +46,7 @@ export default function LivingWorld() {
   const [messages, setMessages] = useState<Array<{ id: string; sender: 'user' | 'twin'; text: string }>>([]);
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
+  const [isVisioning, setIsVisioning] = useState(false);
   const [wing, setWing] = useState<string | null>(null);
   const [activeWing, setActiveWing] = useState<string | null>(null);
   const [wingData, setWingData] = useState<Array<{ k: string; v: string }>>([]);
@@ -57,6 +60,7 @@ export default function LivingWorld() {
       session.userId = userId;
       bootstrapCoordinator.bootstrap().catch(() => {});
       try { voiceEngine.start(); } catch {}
+      refreshPlace(userId);
       light('perception', 3000);
     }
     const onMem = () => light('memory');
@@ -71,7 +75,7 @@ export default function LivingWorld() {
       if (key === 'memory') { const d: any = await apiGet(`/api/memories?user_id=${userId}`); const arr = Array.isArray(d) ? d : (d?.memories || []); setWingData(arr.slice(0, 8).map((m: any) => ({ k: m.layer || m.type || 'ذكرى', v: String(m.content || m.text || '').slice(0, 60) }))); }
       else if (key === 'goals') { const d: any = await apiGet(`/api/goals?user_id=${userId}`); const arr = Array.isArray(d) ? d : (d?.goals || []); setWingData(arr.slice(0, 8).map((g: any) => ({ k: g.status || 'هدف', v: String(g.title || g.text || '').slice(0, 60) }))); }
       else if (key === 'dreams') { const d: any = await apiGet(`/api/dreams?user_id=${userId}`); const arr = Array.isArray(d) ? d : (d?.dreams || []); setWingData(arr.slice(0, 8).map((x: any) => ({ k: x.kind || 'حلم', v: String(x.summary || x.text || '').slice(0, 60) }))); }
-      else if (key === 'perception') { const s = devicePresenceEngine.getSensors(); setWingData([{ k: 'الحركة', v: s.userWalking ? 'يمشي معك' : s.userStationary ? 'ساكن' : 'متحرك' }, { k: 'الإضاءة', v: String(s.lightLevel ?? '—') }, { k: 'البطارية', v: `${s.deviceBattery ?? '—'}%` }, { k: 'الوقت', v: s.isNightTime ? 'ليل' : 'نهار' }]); }
+      else if (key === 'perception') { const s = devicePresenceEngine.getSensors(); setWingData([{ k: 'الحركة', v: s.userWalking ? 'يمشي معك' : s.userStationary ? 'ساكن' : 'متحرك' }, { k: 'الإضاءة', v: String(s.lightLevel ?? '—') }, { k: 'البطارية', v: `${s.deviceBattery ?? '—'}%` }, { k: 'الوقت', v: s.isNightTime ? 'ليل' : 'نهار' }, { k: 'المكان', v: sharedPresence.place || 'غير معروف' }]); }
       else if (key === 'emotion') { const st = stateBus.getState(); setWingData([{ k: 'الشعور', v: st.emotionValence > 0.3 ? 'دافئ' : st.emotionValence < -0.3 ? 'متكدر' : 'هادئ' }, { k: 'الطاقة', v: `${Math.round(st.energy * 100)}%` }, { k: 'الارتباط', v: `${Math.round(st.connection * 100)}%` }, { k: 'الفضول', v: `${Math.round(st.curiosity * 100)}%` }]); }
       else setWingData([{ k: 'الحدس', v: 'أتعلم من سياقاتك وستزداد حدسي مع كل حوار.' }]);
     } catch (e: any) { setWingData([{ k: 'تنبيه', v: String(e?.message || e).slice(0, 80) }]); }
@@ -101,7 +105,14 @@ export default function LivingWorld() {
     stateBus.patch({ thinking: true, focus: 0.8 }); light('intuition');
     setIsThinking(true);
     try {
-      const response: any = await apiPost('/api/chat', { message: text, user_id: userId });
+      const sensors = devicePresenceEngine.getSensors();
+      const response: any = await apiPost('/api/chat', {
+        message: text, user_id: userId,
+        device_info: {
+          battery_level: sensors.deviceBattery, is_night: sensors.isNightTime, user_walking: sensors.userWalking,
+          place: sharedPresence.place || undefined, vision_summary: sharedPresence.vision_summary || undefined,
+        },
+      });
       const silence = Number(response?.silence_ms || 0);
       if (silence > 0) await new Promise(r => setTimeout(r, Math.min(silence, 3500)));
       setOnline(true); setDiag('');
@@ -121,7 +132,25 @@ export default function LivingWorld() {
       stateBus.patch({ thinking: false });
     }
   }, [inputText, isThinking, userId, light, lang]);
-  // ✅ الأذن: تسجيل ← base64 ← /api/stt/transcribe ← إدخال
+  // ✅ العين: رؤية مشتركة صريحة (كاميرا النظام + إذن لحظي)
+  const handleVision = useCallback(async () => {
+    if (isVisioning) return;
+    setIsVisioning(true);
+    stateBus.patch({ thinking: true });
+    try {
+      const r = await shareVision(userId, lang);
+      if (r) {
+        setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'twin', text: `👁 ${r.scene}${r.place ? `\n📍 ${r.place}` : ''}` }]);
+        light('intuition'); light('memory');
+        try { voiceEngine.speak(r.scene, 'joy'); } catch {}
+      }
+    } catch (e: any) {
+      setDiag('VISION: ' + String(e?.message || e).slice(0, 60));
+    } finally {
+      setIsVisioning(false);
+      stateBus.patch({ thinking: false });
+    }
+  }, [userId, lang, isVisioning, light]);
   const toggleListening = async () => {
     if (isListening) {
       const uri = await voiceEngine.stopListening();
@@ -157,7 +186,7 @@ export default function LivingWorld() {
             </TouchableOpacity>
           ))}
         </View>
-        <Text style={[styles.status, { color: colors.textSecondary }]}>{statusLine}{diag ? ` • ${diag}` : ''}</Text>
+        <Text style={[styles.status, { color: colors.textSecondary }]}>{statusLine}{sharedPresence.place ? ` • 📍 ${sharedPresence.place}` : ''}{diag ? ` • ${diag}` : ''}</Text>
       </View>
       {activeWing && (
         <View style={[styles.panel, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -186,6 +215,9 @@ export default function LivingWorld() {
       <View style={[styles.inputContainer, { backgroundColor: colors.card }]}>
         <TouchableOpacity onPress={toggleListening} style={styles.voiceBtn}>
           {isListening ? <MicOff size={22} stroke={colors.accent} /> : <Mic size={22} stroke={colors.textSecondary} />}
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleVision} style={styles.voiceBtn}>
+          <Camera size={22} stroke={isVisioning ? colors.accent : colors.textSecondary} />
         </TouchableOpacity>
         <TextInput style={[styles.input, { textAlign: rtl.textAlign, color: colors.text }]} value={inputText} onChangeText={setInputText} onSubmitEditing={handleSend} editable={!isThinking} placeholder={rtl.isRTL ? 'اكتب رسالتك...' : 'Write your message...'} placeholderTextColor={colors.textSecondary} />
         <TouchableOpacity onPress={handleSend} disabled={isThinking}><Send size={22} stroke={isThinking ? colors.textSecondary : colors.accent} /></TouchableOpacity>
