@@ -126,7 +126,10 @@ export default function LivingWorld() {
   };
   return (
     <KeyboardAvoidingView style={[styles.container, { backgroundColor: colors.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View style={styles.entityWrapper}><TouchableOpacity activeOpacity={0.9} onPress={() => EventBus.emit('OPEN_SOUL_OBSERVATORY', {})}><ConsciousBeing size={Math.min(height * 0.3, 280)} /></TouchableOpacity></View>
+      {/* ✅ الكائن نفسه هو بوابة المرصد */}
+      <TouchableOpacity activeOpacity={0.9} onPress={() => EventBus.emit('OPEN_SOUL_OBSERVATORY', {})} style={styles.entityWrapper}>
+        <ConsciousBeing size={Math.min(height * 0.3, 280)} />
+      </TouchableOpacity>
       <View style={styles.capBlock}>
         <View style={styles.wingsRow}>
           {WINGS.map(w => (
@@ -171,8 +174,9 @@ export default function LivingWorld() {
         <TextInput style={[styles.input, { textAlign: rtl.textAlign, color: colors.text }]} value={inputText} onChangeText={setInputText} onSubmitEditing={handleSend} editable={!isThinking} placeholder={rtl.isRTL ? 'اكتب رسالتك...' : 'Write your message...'} placeholderTextColor={colors.textSecondary} />
         <TouchableOpacity onPress={handleSend} disabled={isThinking}><Send size={22} stroke={isThinking ? colors.textSecondary : colors.accent} /></TouchableOpacity>
       </View>
-    <SoulObservatory />
-</KeyboardAvoidingView>
+      {/* ✅ مرصد الروح داخل العالم الحي */}
+      <SoulObservatory />
+    </KeyboardAvoidingView>
   );
 }
 const styles = StyleSheet.create({
