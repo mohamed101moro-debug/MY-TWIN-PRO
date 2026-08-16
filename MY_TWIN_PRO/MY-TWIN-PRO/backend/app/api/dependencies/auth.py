@@ -117,15 +117,20 @@ async def get_current_user(
 async def get_user_tier(
     user_id: str = Depends(get_current_user_id)
 ) -> str:
-    """استخراج باقة المستخدم — مصدر الحقيقة: الـ DB مباشرة (لا كاش قديم)."""
+    """استخراج باقة المستخدم — مصدر الحقيقة: الـ DB أولاً (الكاش قد يحتفظ بباقة قديمة للأبد)."""
+    # 1. الـ DB أولاً
     try:
         from app.infrastructure.database.supabase_client import get_db
         db = get_db()
         profile = db.table("profiles").select("tier").eq("id", user_id).single().execute()
         if profile.data and profile.data.get("tier"):
-            return profile.data["tier"]
+            tier = profile.data["tier"]
+            if CACHE_AVAILABLE:
+                cache_set(f"tier:{user_id}", tier, 600)
+            return tier
     except Exception as e:
         logger.warning(f"Failed to fetch tier: {e}")
+    # 2. احتياط: الكاش
     if CACHE_AVAILABLE:
         cached_tier = cache_get(f"tier:{user_id}")
         if cached_tier:
