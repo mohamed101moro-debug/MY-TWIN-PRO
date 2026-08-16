@@ -5,7 +5,6 @@ from app.api.routes import study_routes, code_lab_routes, business_routes
 from app.api.routes import creator_routes, dream_routes, life_coach_routes
 from app.api.routes import image_lab_routes, smart_home_routes, task_manager_routes
 from app.api.routes import economy_routes, ads, billing, referral
-from app.api.routes import unified_chat, push, perception_snapshot, system_routes
 api_router.include_router(auth.router)
 api_router.include_router(chat.router)
 api_router.include_router(memories.router)
@@ -23,7 +22,6 @@ api_router.include_router(economy_routes.router)
 api_router.include_router(ads.router)
 api_router.include_router(billing.router)
 api_router.include_router(referral.router)
-api_router.include_router(unified_chat.router)
 api_router.include_router(push.router)
 api_router.include_router(perception_snapshot.router)
 api_router.include_router(system_routes.router)
@@ -56,5 +54,11 @@ for _m in ["study_routes","creator_routes","dream_routes","image_lab_routes","ta
 try:
     from app.api.routes import vision_routes
     api_router.include_router(vision_routes.router)
+except Exception:
+    pass
+
+try:
+    from app.api.routes import ritual_routes
+    api_router.include_router(ritual_routes.router)
 except Exception:
     pass

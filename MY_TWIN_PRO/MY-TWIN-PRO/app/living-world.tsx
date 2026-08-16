@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, ScrollView, Dimensions, Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { apiPost, apiGet } from '../lib/httpClient';
 import { useRTL } from '../lib/useRTL';
@@ -63,6 +64,7 @@ export default function LivingWorld() {
       try { voiceEngine.start(); } catch {}
       refreshPlace(userId);
       light('perception', 3000);
+      (async () => { try { const last = await AsyncStorage.getItem('ritual_day'); const today = new Date().toDateString(); if (last !== today) { const r: any = await apiGet('/api/ritual/next'); if (r?.text) { setMessages(prev => [...prev, { id: 'ritual', sender: 'twin', text: r.text }]); await AsyncStorage.setItem('ritual_day', today); } } } catch {} })();
     }
     const onMem = () => light('memory');
     const onMile = () => light('goals');
