@@ -57,8 +57,6 @@ try:
 except Exception:
     pass
 
-try:
-    from app.api.routes import ritual_routes
-    api_router.include_router(ritual_routes.router)
-except Exception:
-    pass
+
+from app.api.routes import ritual_routes
+api_router.include_router(ritual_routes.router)
