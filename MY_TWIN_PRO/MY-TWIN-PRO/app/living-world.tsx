@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import { apiPost, apiGet } from '../lib/httpClient';
 import { useRTL } from '../lib/useRTL';
 import { useAppTheme } from '../engine/colors';
@@ -120,13 +121,30 @@ export default function LivingWorld() {
       stateBus.patch({ thinking: false });
     }
   }, [inputText, isThinking, userId, light, lang]);
+  // ✅ الأذن: تسجيل ← base64 ← /api/stt/transcribe ← إدخال
   const toggleListening = async () => {
-    if (isListening) { voiceEngine.stopListening(); setIsListening(false); stateBus.patch({ listening: false }); }
-    else { try { await voiceEngine.startListening(); setIsListening(true); stateBus.patch({ listening: true }); } catch {} }
+    if (isListening) {
+      const uri = await voiceEngine.stopListening();
+      setIsListening(false);
+      stateBus.patch({ listening: false });
+      if (uri) {
+        try {
+          stateBus.patch({ thinking: true });
+          const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+          const res: any = await apiPost('/api/stt/transcribe', { audio_base64: b64, language: lang, user_id: userId });
+          if (res?.text) setInputText(prev => (prev ? prev + ' ' : '') + res.text);
+        } catch (e: any) {
+          setDiag('STT: ' + String(e?.message || e).slice(0, 60));
+        } finally {
+          stateBus.patch({ thinking: false });
+        }
+      }
+    } else {
+      try { await voiceEngine.startListening(); setIsListening(true); stateBus.patch({ listening: true }); } catch {}
+    }
   };
   return (
     <KeyboardAvoidingView style={[styles.container, { backgroundColor: colors.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      {/* ✅ الكائن نفسه هو بوابة المرصد */}
       <TouchableOpacity activeOpacity={0.9} onPress={() => EventBus.emit('OPEN_SOUL_OBSERVATORY', {})} style={styles.entityWrapper}>
         <ConsciousBeing size={Math.min(height * 0.3, 280)} />
       </TouchableOpacity>
@@ -139,9 +157,7 @@ export default function LivingWorld() {
             </TouchableOpacity>
           ))}
         </View>
-        <Text style={[styles.status, { color: colors.textSecondary }]}>
-          {statusLine}{diag ? ` • ${diag}` : ''}
-        </Text>
+        <Text style={[styles.status, { color: colors.textSecondary }]}>{statusLine}{diag ? ` • ${diag}` : ''}</Text>
       </View>
       {activeWing && (
         <View style={[styles.panel, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -174,7 +190,6 @@ export default function LivingWorld() {
         <TextInput style={[styles.input, { textAlign: rtl.textAlign, color: colors.text }]} value={inputText} onChangeText={setInputText} onSubmitEditing={handleSend} editable={!isThinking} placeholder={rtl.isRTL ? 'اكتب رسالتك...' : 'Write your message...'} placeholderTextColor={colors.textSecondary} />
         <TouchableOpacity onPress={handleSend} disabled={isThinking}><Send size={22} stroke={isThinking ? colors.textSecondary : colors.accent} /></TouchableOpacity>
       </View>
-      {/* ✅ مرصد الروح داخل العالم الحي */}
       <SoulObservatory />
     </KeyboardAvoidingView>
   );
