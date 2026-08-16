@@ -60,6 +60,16 @@ async def get_current_user_id(
     raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
+async def _db_tier(user_id: str):
+    """مصدر الحقيقة للباقة: profiles.tier مباشرة."""
+    try:
+        from app.infrastructure.database.supabase_client import get_db
+        r = get_db().table("profiles").select("tier").eq("id", user_id).single().execute()
+        return (r.data or {}).get("tier")
+    except Exception:
+        return None
+
+
 async def get_current_user(
     authorization: str = Header(..., alias="Authorization")
 ) -> Dict[str, Any]:
@@ -76,6 +86,12 @@ async def get_current_user(
     if SECURITY_AVAILABLE:
         context = get_user_context(token)
         if context.get("authenticated"):
+            try:
+                _live = await _db_tier(context.get("user_id"))
+                if _live:
+                    context["tier"] = _live
+            except Exception:
+                pass
             return context
 
     # 2. التحقق عبر Supabase
@@ -89,7 +105,7 @@ async def get_current_user(
                 "authenticated": True,
                 "user_id": user.id,
                 "email": getattr(user, 'email', ''),
-                "tier": getattr(user, 'user_metadata', {}).get('tier', 'free'),
+                "tier": (await _db_tier(user.id)) or getattr(user, 'user_metadata', {}).get('tier', 'free'),
                 "role": getattr(user, 'role', 'authenticated'),
             }
     except Exception as e:

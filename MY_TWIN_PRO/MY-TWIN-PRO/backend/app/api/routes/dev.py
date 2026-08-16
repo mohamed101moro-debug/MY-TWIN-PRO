@@ -96,3 +96,10 @@ async def unlock_tier(body: dict):
     except Exception:
         pass
     return {"status": "ok", "tier": body.get("tier", "yearly")}
+
+@router.get("/tier-check")
+async def tier_check(user_id: str):
+    """تشخيص: ما الباقة المخزنة فعليًا؟"""
+    from app.infrastructure.database.supabase_client import get_db
+    r = get_db().table("profiles").select("tier").eq("id", user_id).single().execute()
+    return {"user_id": user_id, "db_tier": (r.data or {}).get("tier")}
