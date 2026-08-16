@@ -21,6 +21,18 @@ LEVEL = {"free": 0, "plus": 1, "premium": 2, "pro": 3, "yearly": 4}
 
 async def can_use_capability(user_id: str, tier: str, capability: str) -> dict:
     """يعيد {allowed, reason} بأسباب داخلية (لا تُعرض للمستخدم)."""
+    # ✅ مصدر الحقيقة للباقة: الكاش ثم الـ DB (التوكن قد يحمل باقة قديمة)
+    try:
+        from app.infrastructure.cache.cache_service import get as _cg, set as _cs
+        _live = _cg(f"tier:{user_id}")
+        if not _live:
+            _r = get_db().table("profiles").select("tier").eq("id", user_id).single().execute()
+            _live = (_r.data or {}).get("tier") or tier
+            try: _cs(f"tier:{user_id}", _live, 600)
+            except Exception: pass
+        if _live: tier = _live
+    except Exception:
+        pass
     if LEVEL.get(tier, 0) < LEVEL.get(CAPABILITY_TIERS.get(capability, "free"), 0):
         return {"allowed": False, "reason": "tier_locked"}
     db = get_db()
