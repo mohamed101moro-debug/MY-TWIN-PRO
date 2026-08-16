@@ -47,8 +47,28 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         token = auth[7:]; uid = None; tier = "free"
         try:
             from app.core.security import decode_access_token, extract_user_id, extract_tier
+def _live_tier(uid, payload):
+    """مصدر الحقيقة للباقة: الكاش ثم DB ثم التوكن (يصلح التوكنات القديمة)."""
+    try:
+        from app.infrastructure.cache.cache_service import get as _cg
+        t = _cg(f"tier:{uid}")
+        if t: return t
+    except Exception: pass
+    try:
+        from app.infrastructure.database.supabase_client import get_db
+        r = get_db().table("profiles").select("tier").eq("id", uid).single().execute()
+        t = (r.data or {}).get("tier")
+        if t:
+            try:
+                from app.infrastructure.cache.cache_service import set as _cs
+                _cs(f"tier:{uid}", t, 600)
+            except Exception: pass
+            return t
+    except Exception: pass
+    return extract_tier(payload)
+
             payload = decode_access_token(token)
-            if payload: uid = extract_user_id(payload); tier = extract_tier(payload)
+            if payload: uid = extract_user_id(payload); tier = _live_tier(uid, payload)
         except Exception:
             pass
         if not uid:
