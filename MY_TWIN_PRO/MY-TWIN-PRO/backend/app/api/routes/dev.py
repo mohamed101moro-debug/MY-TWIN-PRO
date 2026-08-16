@@ -95,6 +95,15 @@ async def unlock_tier(body: dict):
         await invalidate_tier_cache(body["user_id"], body.get("tier", "yearly"))
     except Exception:
         pass
+    # ✅ مزامنة user_metadata حتى تحمل التوكنات الجديدة الباقة الصحيحة
+    try:
+        db = get_db()
+        db.auth.admin.update_user_by_id(body["user_id"], {"user_metadata": {"tier": body.get("tier", "yearly")}})
+    except Exception:
+        try:
+            db.auth.admin.update_user_by_id(body["user_id"], {"data": {"tier": body.get("tier", "yearly")}})
+        except Exception:
+            pass
     return {"status": "ok", "tier": body.get("tier", "yearly")}
 
 @router.get("/tier-check")
