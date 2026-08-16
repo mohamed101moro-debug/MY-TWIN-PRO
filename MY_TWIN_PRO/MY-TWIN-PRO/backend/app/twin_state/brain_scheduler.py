@@ -101,6 +101,17 @@ class BrainScheduler:
                     await twin_internal_state.add_pending_question(uid, q)
             except Exception as e:
                 logger.debug(f"Light/curiosity {uid}: {e}")
+        try:
+            from app.twin_state.finitude_awareness import finitude_awareness
+            fin = await finitude_awareness.contemplate(uid)
+            if fin.get("absence_days", 0) >= 3:
+                from app.memory.reflection.reflection_engine import store_reflection
+                await store_reflection(uid, "void_reflection", fin["note_ar"], 0.7)
+                from app.twin_state.internal_state import twin_internal_state
+                await twin_internal_state.add_pending_question(uid, f"💭 {fin['note_ar']}")
+        except Exception as e:
+            logger.debug(f"Light/void {uid}: {e}")
+
 
     # ═══════════════════════════════════════════════════════════
     # دورة متوسطة – كل ساعة

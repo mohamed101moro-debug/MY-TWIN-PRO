@@ -126,6 +126,15 @@ async def get_user_tier(
     return "free"
 
 
+async def invalidate_tier_cache(user_id: str) -> None:
+    """إبطال كاش الباقة فور تغييرها — مصدر الحقيقة هو الـ DB."""
+    try:
+        from app.infrastructure.cache.cache_service import delete as cache_delete
+        cache_delete(f"tier:{user_id}")
+    except Exception:
+        pass
+
+
 def require_tier(minimum_tier: str):
     """
     Dependency factory: يقيد الوصول بناءً على الباقة.

@@ -64,7 +64,12 @@ async def upgrade_subscription(user_id: str, tier: str, duration_days: int = 30)
             )
         except: pass
 
-        logger.info(f"✅ تمت ترقية المستخدم {user_id} إلى {tier}")
+        try:
+        from app.api.dependencies.auth import invalidate_tier_cache
+        await invalidate_tier_cache(user_id)
+    except Exception:
+        pass
+    logger.info(f"✅ تمت ترقية المستخدم {user_id} إلى {tier}")
         return True
     except Exception as e:
         logger.error(f"فشل ترقية الاشتراك: {e}")

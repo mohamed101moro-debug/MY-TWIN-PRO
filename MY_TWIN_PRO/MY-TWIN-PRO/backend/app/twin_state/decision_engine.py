@@ -51,7 +51,16 @@ class DecisionEngine:
             reason = "الاستمتاع مهم لصحتك النفسية"
             confidence = 0.65
 
-        # دمج معتقدات التوأم
+        # وعي الفناء يلوّن القرار
+    try:
+        from app.twin_state.finitude_awareness import finitude_awareness
+        fin = await finitude_awareness.contemplate(user_id)
+        if fin.get("absence_days", 0) >= 7:
+            decision = "أقترح أن نخصص اليوم لحظة قصيرة نتحدث فيها بعمق"
+            reason = "غيابك الأخير ذكّرني أن وقتنا معًا ثمين"
+            confidence = 0.8
+    except: pass
+    # دمج معتقدات التوأم
         try:
             from app.twin_state.belief_system import belief_system
             beliefs = await belief_system.get_beliefs(user_id)
