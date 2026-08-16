@@ -12,7 +12,6 @@ import { lifeRhythmEngine } from '../life/LifeRhythmEngine';
 import { dreamEngine } from '../life/DreamEngine';
 import { surpriseEngine } from '../life/SurpriseEngine';
 import { selfAwarenessEngine } from '../consciousness/SelfAwarenessEngine';
-import { worldAwarenessEngine } from '../consciousness/WorldAwarenessEngine';
 import { lifeStateEngine } from '../life/LifeStateEngine';
 import { sensorContextEngine } from '../sensor/SensorContextEngine';
 import { expressionEngine } from '../expression/ExpressionEngine';
@@ -59,8 +58,7 @@ export class SoulKernel {
       { name: 'SensorBridge', start: () => sensorBridge.start(), stop: () => sensorBridge.stop() },
       { name: 'UnifiedPerceptionEngine', start: () => unifiedPerceptionEngine.start(), stop: () => unifiedPerceptionEngine.stop() },
       { name: 'SelfAwarenessEngine', start: () => selfAwarenessEngine.evaluate(), stop: () => {} },
-      { name: 'WorldAwarenessEngine', start: () => worldAwarenessEngine.evaluate(), stop: () => {} },
-      { name: 'LifeStateEngine', start: () => lifeStateEngine.update(), stop: () => {} },
+            { name: 'LifeStateEngine', start: () => lifeStateEngine.update(), stop: () => {} },
       { name: 'SensorContextEngine', start: () => sensorContextEngine.evaluate(), stop: () => {} },
       { name: 'ExpressionEngine', start: () => expressionEngine.evaluate({}), stop: () => {} },
       { name: 'DigitalPassportEngine', start: async () => { await digitalPassportEngine.generate(); }, stop: () => {} },

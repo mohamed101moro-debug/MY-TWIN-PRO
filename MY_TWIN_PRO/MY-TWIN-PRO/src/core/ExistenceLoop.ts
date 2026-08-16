@@ -1,7 +1,6 @@
 import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { selfAwarenessEngine } from '../../engine/consciousness/SelfAwarenessEngine';
-import { worldAwarenessEngine } from '../../engine/consciousness/WorldAwarenessEngine';
 import { lifeStateEngine } from '../../engine/life/LifeStateEngine';
 import { lifeRhythmEngine } from '../../engine/life/LifeRhythmEngine';
 import { dreamEngine } from '../../engine/life/DreamEngine';
@@ -9,6 +8,7 @@ import { surpriseEngine } from '../../engine/life/SurpriseEngine';
 import { presenceEngine } from '../../engine/presence/PresenceEngine';
 import { sensorContextEngine } from '../../engine/sensor/SensorContextEngine';
 import { stateBus } from './StateBus';
+/** ✅ SSA-001: حلقة وجود الجسد — حواس وإيقاع وحضور فقط؛ الوعي يعيش في الخلفية. */
 export class ExistenceLoop {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private slowIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -23,7 +23,7 @@ export class ExistenceLoop {
     if (f.dreams) dreamEngine.start();
     if (f.surprises) surpriseEngine.start();
     this.appSub = AppState.addEventListener('change', s => this.onApp(s));
-    console.log('[ExistenceLoop] 🧬 The Twin is now alive (governed).');
+    console.log('[ExistenceLoop] 🧬 The Twin body is alive (governed).');
   }
   stop(): void {
     this.pause();
@@ -52,7 +52,7 @@ export class ExistenceLoop {
   }
   private tick(): void { selfAwarenessEngine.evaluate(); lifeStateEngine.update(); presenceEngine.applyLifeRhythm(); }
   private slowTick(): void {
-    worldAwarenessEngine.evaluate(); sensorContextEngine.evaluate();
+    sensorContextEngine.evaluate();
     const r = Math.random();
     if (r < 0.3) stateBus.emit('micro:gaze_shift', { direction: 'wandering' });
     else if (r < 0.5) stateBus.emit('micro:breath_variation', {});
@@ -63,7 +63,7 @@ export class ExistenceLoop {
     dreamEngine.setSleeping(rhythm.phase === 'deep_sleep' || rhythm.phase === 'dawn');
   }
   private deepTick(): void {
-    selfAwarenessEngine.evaluate(); worldAwarenessEngine.evaluate();
+    selfAwarenessEngine.evaluate();
     if (lifeRhythmEngine.getState().shouldRest) presenceEngine.setEmotion('calm', 0.2);
   }
 }
