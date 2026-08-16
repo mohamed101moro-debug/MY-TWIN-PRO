@@ -5,6 +5,7 @@ from app.api.routes import study_routes, code_lab_routes, business_routes
 from app.api.routes import creator_routes, dream_routes, life_coach_routes
 from app.api.routes import image_lab_routes, smart_home_routes, task_manager_routes
 from app.api.routes import economy_routes, ads, billing, referral
+from app.api.routes import perception_snapshot, push, system_routes
 api_router.include_router(auth.router)
 api_router.include_router(chat.router)
 api_router.include_router(memories.router)
