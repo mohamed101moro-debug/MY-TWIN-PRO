@@ -126,11 +126,15 @@ async def get_user_tier(
     return "free"
 
 
-async def invalidate_tier_cache(user_id: str) -> None:
-    """إبطال كاش الباقة فور تغييرها — مصدر الحقيقة هو الـ DB."""
+async def invalidate_tier_cache(user_id: str, new_tier: str = None) -> None:
+    """إبطال/تسخين كاش الباقة بعد أي تغيير — مصدر الحقيقة هو الـ DB."""
     try:
-        from app.infrastructure.cache.cache_service import delete as cache_delete
-        cache_delete(f"tier:{user_id}")
+        from app.infrastructure.cache import cache_service as cs
+        d = getattr(cs, "delete", None) or getattr(cs, "remove", None)
+        if callable(d):
+            d(f"tier:{user_id}")
+        if new_tier:
+            cs.set(f"tier:{user_id}", new_tier, 600)
     except Exception:
         pass
 

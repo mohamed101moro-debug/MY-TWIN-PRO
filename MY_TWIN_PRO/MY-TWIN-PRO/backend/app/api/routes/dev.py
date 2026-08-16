@@ -92,7 +92,7 @@ async def unlock_tier(body: dict):
     get_db().table("profiles").update({"tier": body.get("tier", "yearly")}).eq("id", body["user_id"]).execute()
     try:
         from app.api.dependencies.auth import invalidate_tier_cache
-        await invalidate_tier_cache(body["user_id"])
+        await invalidate_tier_cache(body["user_id"], body.get("tier", "yearly"))
     except Exception:
         pass
     return {"status": "ok", "tier": body.get("tier", "yearly")}

@@ -46,16 +46,17 @@ async def upgrade_subscription(user_id: str, tier: str, duration_days: int = 30)
         db.table("profiles").update({
             "tier": tier, "subscription_expires": expires, "subscription_id": f"sub_{user_id[:8]}_{tier}"
         }).eq("id", user_id).execute()
-
-        # ✅ استعادة كاملة للطاقة عند الترقية
         try:
             from app.engine.energy.twin_energy_engine import twin_energy_engine
             await twin_energy_engine.restore_energy(user_id, amount=1.0, source="upgrade")
             logger.info(f"⚡ طاقة {user_id} استعيدت بالكامل بعد الترقية إلى {tier}")
         except Exception as e:
             logger.warning(f"فشل استعادة الطاقة عند الترقية: {e}")
-
-        # تسجيل الحدث
+        try:
+            from app.infrastructure.cache.cache_service import set as cache_set
+            cache_set(f"tier:{user_id}", tier, 600)
+        except Exception:
+            pass
         try:
             from app.memory.emotional.emotional_memory import store_emotional_memory
             await store_emotional_memory(
@@ -63,17 +64,12 @@ async def upgrade_subscription(user_id: str, tier: str, duration_days: int = 30)
                 detected_emotion={"primary": "joy", "intensity": 0.9, "valence": 0.8}, trigger="subscription_upgraded"
             )
         except: pass
-
-        try:
-        from app.api.dependencies.auth import invalidate_tier_cache
-        await invalidate_tier_cache(user_id)
-    except Exception:
-        pass
-    logger.info(f"✅ تمت ترقية المستخدم {user_id} إلى {tier}")
+        logger.info(f"✅ تمت ترقية المستخدم {user_id} إلى {tier}")
         return True
     except Exception as e:
         logger.error(f"فشل ترقية الاشتراك: {e}")
         return False
+
 
 async def get_feature_access(user_id: str, feature: str) -> bool:
     sub = await get_user_subscription(user_id)
