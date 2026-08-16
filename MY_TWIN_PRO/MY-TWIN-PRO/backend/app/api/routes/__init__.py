@@ -52,3 +52,9 @@ for _m in ["study_routes","creator_routes","dream_routes","image_lab_routes","ta
             api_router.include_router(_r.router)
     except Exception as _e:
         import logging as _lg; _lg.getLogger("routes").warning(f"router {_m}: {_e}")
+
+try:
+    from app.api.routes import vision_routes
+    api_router.include_router(vision_routes.router)
+except Exception:
+    pass

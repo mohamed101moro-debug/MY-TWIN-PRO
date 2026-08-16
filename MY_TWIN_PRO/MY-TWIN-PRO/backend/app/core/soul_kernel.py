@@ -20,6 +20,12 @@ class SoulKernel:
             f"[LIFE_LOG] {life_note['text']} "
             f"[RULE] استخدم الملاحظات الشخصية أعلاه فقط إن كانت ذات صلة؛ لا تخترع أرقامًا أو وقائع غير موجودة."
         )
+        _place = str(di.get("place") or "")
+        _vision = str(di.get("vision_summary") or "")
+        if _place:
+            engine_context += f" [PLACE] {_place[:200]}"
+        if _vision:
+            engine_context += f" [VISION] {_vision[:300]}"
         return {"engine_context": engine_context, "life_observation": life_note, "steps_today": steps_today}
 
     async def post_process(self, user_id: str, message: str, reply: str, emotion: str,

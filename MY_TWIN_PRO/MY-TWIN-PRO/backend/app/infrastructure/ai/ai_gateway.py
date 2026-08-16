@@ -114,6 +114,22 @@ class AIGateway:
             return text
         except Exception:
             return None
+    async def see(self, prompt: str, image_base64: str, mime_type: str = "image/jpeg") -> Optional[str]:
+        """رؤية مشتركة: فهم صورة عبر Gemini Vision (REST)."""
+        key = self.key_manager.get_key("gemini")
+        if not key: return None
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}"
+        body = {"contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": mime_type, "data": image_base64}}]}]}
+        try:
+            async with aiohttp.ClientSession() as sess:
+                async with sess.post(url, json=body, timeout=aiohttp.ClientTimeout(total=25)) as r:
+                    if r.status == 200:
+                        d = await r.json()
+                        return d["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception as e:
+            logger.warning(f"see failed: {e}")
+        return None
+
     async def _hf(self, model, prompt, key):
         if not self._hf_session: self._hf_session = aiohttp.ClientSession()
         url=f"https://api-inference.huggingface.co/models/{model}"
