@@ -6,7 +6,7 @@ Development Routes v2.0 – اختبار متقدم
 - فحص حالة النظام الداخلية
 """
 import os, logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
 from app.infrastructure.database.supabase_client import get_db
 
@@ -103,3 +103,21 @@ async def tier_check(user_id: str):
     from app.infrastructure.database.supabase_client import get_db
     r = get_db().table("profiles").select("tier").eq("id", user_id).single().execute()
     return {"user_id": user_id, "db_tier": (r.data or {}).get("tier")}
+
+@router.get("/tier-trace")
+async def tier_trace(user_id: str, authorization: str = Header(None, alias="Authorization")):
+    from app.api.dependencies.auth import get_user_tier, get_current_user
+    out = {"user_id": user_id}
+    try:
+        from app.infrastructure.database.supabase_client import get_db
+        r = get_db().table("profiles").select("tier").eq("id", user_id).single().execute()
+        out["db_tier"] = (r.data or {}).get("tier")
+    except Exception as e: out["db_tier"] = f"err:{e}"
+    try: out["dep_tier"] = await get_user_tier(user_id)
+    except Exception as e: out["dep_tier"] = f"err:{e}"
+    if authorization:
+        try:
+            ctx = await get_current_user(authorization)
+            out["context_tier"] = ctx.get("tier")
+        except Exception as e: out["context_tier"] = f"err:{e}"
+    return out
