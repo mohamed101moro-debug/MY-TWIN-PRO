@@ -101,42 +101,20 @@ async def get_current_user(
 async def get_user_tier(
     user_id: str = Depends(get_current_user_id)
 ) -> str:
-    """
-    استخراج باقة المستخدم (مع تخزين مؤقت).
-    """
-    # 1. فحص الكاش
-    if CACHE_AVAILABLE:
-        cached_tier = cache_get(f"tier:{user_id}")
-        if cached_tier:
-            return cached_tier
-
-    # 2. جلب من قاعدة البيانات
+    """استخراج باقة المستخدم — مصدر الحقيقة: الـ DB مباشرة (لا كاش قديم)."""
     try:
         from app.infrastructure.database.supabase_client import get_db
         db = get_db()
         profile = db.table("profiles").select("tier").eq("id", user_id).single().execute()
         if profile.data and profile.data.get("tier"):
-            tier = profile.data["tier"]
-            if CACHE_AVAILABLE:
-                cache_set(f"tier:{user_id}", tier, 600)
-            return tier
+            return profile.data["tier"]
     except Exception as e:
         logger.warning(f"Failed to fetch tier: {e}")
-
+    if CACHE_AVAILABLE:
+        cached_tier = cache_get(f"tier:{user_id}")
+        if cached_tier:
+            return cached_tier
     return "free"
-
-
-async def invalidate_tier_cache(user_id: str, new_tier: str = None) -> None:
-    """إبطال/تسخين كاش الباقة بعد أي تغيير — مصدر الحقيقة هو الـ DB."""
-    try:
-        from app.infrastructure.cache import cache_service as cs
-        d = getattr(cs, "delete", None) or getattr(cs, "remove", None)
-        if callable(d):
-            d(f"tier:{user_id}")
-        if new_tier:
-            cs.set(f"tier:{user_id}", new_tier, 600)
-    except Exception:
-        pass
 
 
 def require_tier(minimum_tier: str):

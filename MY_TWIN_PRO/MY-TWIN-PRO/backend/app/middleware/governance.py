@@ -87,7 +87,15 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
 
 
 def _live_tier(uid, payload):
-    """مصدر الحقيقة للباقة: الكاش ثم DB ثم التوكن."""
+    """مصدر الحقيقة للباقة: DB أولاً — الكاش احتياط عند فشل الـ DB فقط."""
+    try:
+        from app.infrastructure.database.supabase_client import get_db
+        r = get_db().table("profiles").select("tier").eq("id", uid).single().execute()
+        t = (r.data or {}).get("tier")
+        if t:
+            return t
+    except Exception:
+        pass
     try:
         from app.infrastructure.cache.cache_service import get as _cg
         t = _cg(f"tier:{uid}")
@@ -96,20 +104,6 @@ def _live_tier(uid, payload):
     except Exception:
         pass
     try:
-        from app.infrastructure.database.supabase_client import get_db
-        r = get_db().table("profiles").select("tier").eq("id", uid).single().execute()
-        t = (r.data or {}).get("tier")
-        if t:
-            try:
-                from app.infrastructure.cache.cache_service import set as _cs
-                _cs(f"tier:{uid}", t, 600)
-            except Exception:
-                pass
-            return t
-    except Exception:
-        pass
-    try:
         return extract_tier(payload)
     except Exception:
         return "free"
-
