@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, ScrollView, Dimensions, Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system';
+import * as Haptics from 'expo-haptics';
 import { apiPost, apiGet } from '../lib/httpClient';
 import { useRTL } from '../lib/useRTL';
 import { useAppTheme } from '../engine/colors';
@@ -139,7 +140,7 @@ export default function LivingWorld() {
     stateBus.patch({ thinking: true });
     try {
       const r = await shareVision(userId, lang);
-      if (r) {
+      if (r) { try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
         setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'twin', text: `👁 ${r.scene}${r.place ? `\n📍 ${r.place}` : ''}` }]);
         light('intuition'); light('memory');
         try { voiceEngine.speak(r.scene, 'joy'); } catch {}
@@ -174,7 +175,7 @@ export default function LivingWorld() {
   };
   return (
     <KeyboardAvoidingView style={[styles.container, { backgroundColor: colors.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <TouchableOpacity activeOpacity={0.9} onPress={() => EventBus.emit('OPEN_SOUL_OBSERVATORY', {})} style={styles.entityWrapper}>
+      <TouchableOpacity activeOpacity={0.9} onPress={() => { try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft); } catch {} EventBus.emit('OPEN_SOUL_OBSERVATORY', {}); }} style={styles.entityWrapper}>
         <ConsciousBeing size={Math.min(height * 0.3, 280)} />
       </TouchableOpacity>
       <View style={styles.capBlock}>
