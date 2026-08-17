@@ -13,3 +13,8 @@ async def narrative(user_id: str = Depends(get_current_user_id)):
     from app.twin_state.event_store import narrative as narr
     from app.twin_state.subjective_time import felt_gap
     return {"narrative": await narr(user_id), "subjective": await felt_gap(user_id)}
+
+@router.get("/beliefs")
+async def beliefs(user_id: str = Depends(get_current_user_id)):
+    from app.twin_state.belief_system import belief_system
+    return {"beliefs": await belief_system.get_beliefs(user_id)}

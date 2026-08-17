@@ -242,6 +242,13 @@ class ExperienceEngine:
         # ═══════════════════════════════════════════════
         
         await self._update_personality_from_experience(user_id, experience)
+        try:
+            from app.twin_state.belief_system import belief_system
+            if experience["importance"] >= 65 and experience["type"] in ("lesson_learned", "pattern_discovery", "milestone", "emotional_breakthrough"):
+                await belief_system.record_evidence(user_id, event.get("content", "")[:120], origin="experience")
+        except Exception as e:
+            logger.debug(f"belief evidence: {e}")
+
         
         # ═══════════════════════════════════════════════
         # 7. تخزين التجربة في TCMA
