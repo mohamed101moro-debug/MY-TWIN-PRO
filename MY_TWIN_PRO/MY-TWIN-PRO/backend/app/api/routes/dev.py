@@ -141,3 +141,18 @@ async def events_test(user_id: str):
         return {"ok": True, "inserted": len(r.data or []), "total": len(n.data or [])}
     except Exception as e:
         return {"ok": False, "error": str(e)[:300]}
+
+@router.get("/belief-test")
+async def belief_test(user_id: str):
+    """تشخيص صريح: ينفذ مسار المعتقدات ويُظهر أي استثناء بدل ابتلاعه."""
+    from app.twin_state.belief_system import belief_system
+    out = {}
+    try:
+        out["recorded"] = await belief_system.record_evidence(user_id, "التشخيص المباشر يعمل", origin="diag")
+    except Exception as e:
+        out["record_error"] = f"{type(e).__name__}: {str(e)[:200]}"
+    try:
+        out["beliefs"] = await belief_system.get_beliefs(user_id)
+    except Exception as e:
+        out["load_error"] = f"{type(e).__name__}: {str(e)[:200]}"
+    return out
