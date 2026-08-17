@@ -61,3 +61,9 @@ except Exception:
 
 from app.api.routes import ritual_routes
 api_router.include_router(ritual_routes.router)
+
+try:
+    from app.api.routes import self_routes
+    api_router.include_router(self_routes.router)
+except Exception:
+    pass

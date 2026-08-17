@@ -26,6 +26,16 @@ class SoulKernel:
             engine_context += f" [PLACE] {_place[:200]}"
         if _vision:
             engine_context += f" [VISION] {_vision[:300]}"
+    try:
+        from app.twin_state.subjective_time import felt_gap
+        _sg = await felt_gap(user_id)
+        if _sg["felt_gap_h"] > 72:
+            engine_context += " [TEMPORAL] مرّ وقت طويل منذ آخر لقاء؛ افتتح بدفء وتعاطف حقيقيين بلا ابتزاز عاطفي."
+        elif 0 < _sg["felt_gap_h"] < 1:
+            engine_context += " [TEMPORAL] التواصل متقارب الآن؛ نبرة خفيفة متصلة بما سبق."
+    except Exception:
+        pass
+
         return {"engine_context": engine_context, "life_observation": life_note, "steps_today": steps_today}
 
     async def post_process(self, user_id: str, message: str, reply: str, emotion: str,
@@ -42,6 +52,14 @@ class SoulKernel:
             }, context_snapshot)
         except Exception as e:
             logger.debug(f"kernel experience: {e}")
+        try:
+            from app.twin_state.event_store import append_event, bump_identity
+            ev = await append_event(user_id, "Experience", {"emotion": emotion, "importance": int(40 + intensity * 40)})
+            if ev.get("first"):
+                await bump_identity(user_id, "first_experience", "أول تجربة مشتركة")
+        except Exception as e:
+            logger.debug(f"kernel events: {e}")
+
         return {"expression_intent": expr}
 
     async def _life_observation(self, user_id: str, steps_today: int, message: str) -> Dict[str, Any]:
