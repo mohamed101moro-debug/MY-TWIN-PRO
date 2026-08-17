@@ -15,9 +15,7 @@ class BeliefSystem:
     async def _save(self, user_id: str, beliefs: List[Dict[str, Any]]):
         try:
             from app.infrastructure.database.supabase_client import get_db
-            get_db().table("twin_internal_states").upsert(
-                {"user_id": user_id, "beliefs": beliefs, "updated_at": datetime.now(timezone.utc).isoformat()},
-                on_conflict="user_id").execute()
+            get_db().table("twin_internal_states").upsert({"user_id": user_id, "beliefs": beliefs, "updated_at": datetime.now(timezone.utc).isoformat()}, on_conflict="user_id").execute()
         except Exception as e:
             logger.debug(f"belief save: {e}")
     async def get_beliefs(self, user_id: str) -> List[Dict[str, Any]]:
@@ -69,4 +67,4 @@ class BeliefSystem:
             logger.debug(f"Belief update skipped: {e}")
             return []
 belief_system = BeliefSystem()
-logger.info("✅ Belief System v2.1 ready (beliefs column + confidence/evidence/contradictions)")
+logger.info("✅ Belief System v2.1 ready")
