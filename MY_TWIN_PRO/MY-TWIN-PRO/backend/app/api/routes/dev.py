@@ -161,3 +161,20 @@ async def belief_test(user_id: str):
 async def predict_test(user_id: str):
     from app.twin_state.prediction_engine import prediction_engine
     return {"prediction": await prediction_engine.predict_tomorrow(user_id)}
+
+@router.get("/ist-test")
+async def ist_test(user_id: str):
+    """تشخيص نهائي لـ twin_internal_states: يظهر أي خطأ صريحًا."""
+    from app.infrastructure.database.supabase_client import get_db
+    out = {}
+    try:
+        r = get_db().table("twin_internal_states").select("user_id").eq("user_id", user_id).maybe_single().execute()
+        out["select"] = "row" if r.data else "no_row"
+    except Exception as e:
+        out["select_error"] = str(e)[:200]
+    try:
+        get_db().table("twin_internal_states").upsert({"user_id": user_id}, on_conflict="user_id").execute()
+        out["upsert"] = "ok"
+    except Exception as e:
+        out["upsert_error"] = str(e)[:200]
+    return out

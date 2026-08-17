@@ -97,12 +97,13 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id), ti
                 await bump_identity(user_id, "first_experience", "أول تجربة مشتركة")
             await experience_engine.process_event(user_id, {"type": "message", "content": message[:200], "emotion": res.get("emotion"), "importance": int(40 + (res.get("intensity") or 0.5) * 40)})
             try:
-                from app.twin_state.internal_state import twin_internal_state as _ist
-                _lp = (await _ist.get_state(user_id)).get("last_prediction")
-                if _lp:
-                    _ok = (res.get("emotion") or "neutral") == _lp.get("mood")
-                    await append_event(user_id, "PredictionConfirmed" if _ok else "PredictionFailed", {"predicted": _lp.get("mood"), "actual": res.get("emotion")})
-                    await _ist.update_field(user_id, "last_prediction", None)
+                from app.twin_state.event_store import get_timeline
+                _evs = await get_timeline(user_id, 12)
+                _pred = next((e for e in _evs if e["type"] == "PredictionMade"), None)
+                _done = next((e for e in _evs if e["type"] in ("PredictionConfirmed", "PredictionFailed")), None)
+                if _pred and (_done is None or _done["ts"] < _pred["ts"]):
+                    _ok = (res.get("emotion") or "neutral") == (_pred.get("payload") or {}).get("mood")
+                    await append_event(user_id, "PredictionConfirmed" if _ok else "PredictionFailed", {"predicted": (_pred.get("payload") or {}).get("mood"), "actual": res.get("emotion")})
             except Exception:
                 pass
 
