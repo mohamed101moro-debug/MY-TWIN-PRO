@@ -87,5 +87,17 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id), ti
             user_id=user_id, source="chat")))
     except Exception:
         pass
+    try:
+        from app.twin_state.event_store import append_event, bump_identity
+        from app.twin_state.experience_engine import experience_engine
+        import asyncio as _a2
+        async def _log_life():
+            ev = await append_event(user_id, "Experience", {"emotion": res.get("emotion"), "importance": int(40 + (res.get("intensity") or 0.5) * 40)})
+            if ev.get("first"):
+                await bump_identity(user_id, "first_experience", "أول تجربة مشتركة")
+            await experience_engine.process_event(user_id, {"type": "message", "content": message[:200], "emotion": res.get("emotion"), "importance": int(40 + (res.get("intensity") or 0.5) * 40)})
+        _a2.create_task(_log_life())
+    except Exception:
+        pass
     res["silence_ms"] = res.get("silence_ms") or SILENCE_MS.get(res.get("emotion"), 1500)
     return build_envelope(res, rid)
