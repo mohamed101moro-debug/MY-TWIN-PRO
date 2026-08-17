@@ -130,3 +130,14 @@ async def tier_trace(user_id: str, authorization: str = Header(None, alias="Auth
             out["context_tier"] = ctx.get("tier")
         except Exception as e: out["context_tier"] = f"err:{e}"
     return out
+
+@router.get("/events-test")
+async def events_test(user_id: str):
+    """تشخيص مباشر: هل twin_events حيّ؟ يُظهر الخطأ صريحًا."""
+    from app.infrastructure.database.supabase_client import get_db
+    try:
+        r = get_db().table("twin_events").insert({"user_id": user_id, "type": "DevTest", "payload": {"note": "ping"}}).execute()
+        n = get_db().table("twin_events").select("type").eq("user_id", user_id).execute()
+        return {"ok": True, "inserted": len(r.data or []), "total": len(n.data or [])}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:300]}
