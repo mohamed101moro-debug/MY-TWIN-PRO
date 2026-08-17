@@ -19,7 +19,7 @@ class BeliefSystem:
     async def _save(self, user_id: str, beliefs: List[Dict[str, Any]]):
         try:
             from app.infrastructure.database.supabase_client import get_db
-            get_db().table("twin_internal_states").update({"beliefs_v2": beliefs, "updated_at": datetime.now(timezone.utc).isoformat()}).eq("user_id", user_id).execute()
+            get_db().table("twin_internal_states").upsert({"user_id": user_id, "beliefs_v2": beliefs, "updated_at": datetime.now(timezone.utc).isoformat()}, on_conflict="user_id").execute()
         except Exception:
             pass
     async def get_beliefs(self, user_id: str) -> List[Dict[str, Any]]:
