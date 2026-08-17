@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Canvas, Circle, Path, RadialGradient, vec } from '@shopify/react-native-skia';
+import { Canvas, Circle, Path, RadialGradient, SweepGradient, vec } from '@shopify/react-native-skia';
 import { useDerivedValue, useFrameCallback, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import type { PresenceState } from '../../../engine/presence/PresenceTypes';
-export interface BeingEnv { light: number; noise: number; motion: number; camera: boolean; userNear: boolean; listening: boolean; }
+import type { BeingEnv } from './BeingEnv';
 const clamp = (n: number, a = 0, b = 1) => Math.max(a, Math.min(b, n));
 type RGB = { r: number; g: number; b: number };
 const rgba = (c: RGB, alpha = 1) => `rgba(${Math.round(c.r)},${Math.round(c.g)},${Math.round(c.b)},${clamp(alpha)})`;
+// ✅ ضجيج عضوي متعدد الطبقات (شبه Simplex) للغشاء الحي
+const vnoise = (x: number, y: number) => Math.sin(x * 7.3 + y * 1.3) * 0.5 + Math.sin(x * 13.7 - y * 0.7) * 0.3 + Math.sin(x * 29.1 + y * 2.1) * 0.2;
 function useOrbitPath(cx: number, cy: number, radius: number, phaseSeed: number, direction: number, tilt: number,
 speed: SharedValue<number>, turbulence: SharedValue<number>, breathing: SharedValue<number>, pulse: SharedValue<number>, orbitality: SharedValue<number>, slow: SharedValue<number>) {
   return useDerivedValue(() => {
@@ -19,22 +21,27 @@ speed: SharedValue<number>, turbulence: SharedValue<number>, breathing: SharedVa
     let d = '';
     for (let i = 0; i <= points; i += 1) {
       const a = (i / points) * Math.PI * 2;
-      const r = radius * breath + Math.sin(a * 3 + phase * 1.7) * wobble + Math.cos(a * 5 - phase * 0.9) * wobble * 0.42 + Math.sin(a * 9 + phase * 0.45) * wobble * 0.18;
+      const organic = vnoise(Math.cos(a) * 2 + phase * 0.3, Math.sin(a) * 2) * radius * turbulence.value * 0.05;
+      const r = radius * breath + Math.sin(a * 3 + phase * 1.7) * wobble + Math.cos(a * 5 - phase * 0.9) * wobble * 0.42 + Math.sin(a * 9 + phase * 0.45) * wobble * 0.18 + organic;
       d += `${i === 0 ? 'M' : 'L'} ${cx + Math.cos(a + phase * 0.08) * r} ${cy + Math.sin(a + phase * 0.08) * r * (0.54 + tilt * 0.16)} `;
     }
     return `${d}Z`;
   });
 }
-function useParticlePath(cx: number, cy: number, radius: number, speed: SharedValue<number>, anticipation: SharedValue<number>, slow: SharedValue<number>) {
+// ✅ نظام جسيمات بدورة حياة: 60→140 حسب الطاقة، تلاشي ونمو بالحجم
+function useParticlePath(cx: number, cy: number, radius: number, speed: SharedValue<number>, anticipation: SharedValue<number>, energy: SharedValue<number>, slow: SharedValue<number>) {
   return useDerivedValue(() => {
     'worklet';
     const t = slow.value / 1000;
+    const count = Math.round(60 + energy.value * 80);
     let d = '';
-    for (let i = 0; i < 22; i += 1) {
+    for (let i = 0; i < count; i += 1) {
       const seed = i * 17.271;
-      const angle = seed + t * (0.025 + (i % 5) * 0.008) * (0.6 + speed.value * 1.5);
-      const orbitRadius = radius * (1.02 + ((i * 37) % 100) / 100 * 0.95);
-      const size = 0.55 + (((i * 13) % 10) / 10) * (0.8 + anticipation.value * 1.6);
+      const life = (t * (0.05 + (i % 7) * 0.012) + seed) % 1;
+      const fade = Math.sin(life * Math.PI);
+      const angle = seed + t * (0.02 + (i % 5) * 0.008) * (0.6 + speed.value * 1.5);
+      const orbitRadius = radius * (1.02 + ((i * 37) % 100) / 100 * 0.95) * (0.9 + life * 0.25);
+      const size = (0.4 + (((i * 13) % 10) / 10) * (0.7 + anticipation.value * 1.4)) * (0.35 + fade * 0.85);
       d += `M ${cx + Math.cos(angle) * orbitRadius} ${cy + Math.sin(angle) * orbitRadius * 0.58} l ${size} ${size * 0.35} `;
     }
     return d;
@@ -58,8 +65,8 @@ function useEyePath(cx: number, cy: number, side: number, size: number, eyeOpen:
     return `M ${leftX} ${leftY} C ${centerX - width * 0.45 + gx} ${centerY - upper + gy}, ${centerX + width * 0.45 + gx} ${centerY - upper + gy}, ${rightX} ${rightY} C ${centerX + width * 0.48 + gx} ${centerY + lower + gy}, ${centerX - width * 0.48 + gx} ${centerY + lower + gy}, ${leftX} ${leftY} Z`;
   });
 }
-export default function DigitalBeing({ presence, size = 360, isDark: _isDark = true, env }: { presence: PresenceState; size?: number; isDark?: boolean; env?: BeingEnv }) {
-  const cx = size / 2; const cy = size / 2; const core = size * 0.285;
+export default function DigitalBeing({ presence, size = 360, isDark: _isDark = true, env, maturity = 0.35 }: { presence: PresenceState; size?: number; isDark?: boolean; env?: BeingEnv; maturity?: number }) {
+  const cx = size / 2; const cy = size / 2; const core = size * 0.285 * (0.92 + clamp(maturity) * 0.16);
   const fast = useSharedValue(0);
   const slow = useSharedValue(0);
   useFrameCallback((f) => { fast.value = f.timeSinceFirstFrame; });
@@ -75,15 +82,16 @@ export default function DigitalBeing({ presence, size = 360, isDark: _isDark = t
   const proximity = useSharedValue(presence.proximity);
   const eyeTilt = useSharedValue(presence.eyeTilt); const separation = useSharedValue(presence.eyeSeparation);
   const dim = useSharedValue(1); const lst = useSharedValue(0);
-  // ✅ مزامنة الحالة + التفاعلات البيئية (ضوء/ضجيج/حركة/كاميرا/اقتراب/إصغاء) + طور النوم
+  // ✅ مزامنة + تفاعلات بيئية + أطوار الحوار (إصغاء/تفكير/نطق)
   useEffect(() => {
     const light = env?.light ?? 0.5; const noise = env?.noise ?? 0.3; const motion = env?.motion ?? 0;
     const squint = light > 0.75 ? 0.45 : 0;
     const sleepy = presence.energy < 0.25 ? 0.35 : 1;
+    const phaseSpeed = presence.speaking ? 1.25 : presence.thinking ? 0.7 : (env?.listening ? 0.6 : 1);
     energy.value = withTiming(presence.energy, { duration: 180 });
-    speed.value = withTiming(clamp(presence.fieldSpeed + motion * 0.3), { duration: 220 });
-    turbulence.value = withTiming(clamp(presence.turbulence + noise * 0.3), { duration: 220 });
-    attention.value = withTiming(clamp(presence.attention + (env?.camera ? 0.25 : 0) + (env?.userNear ? 0.15 : 0)), { duration: 220 });
+    speed.value = withTiming(clamp((presence.fieldSpeed + motion * 0.3) * phaseSpeed), { duration: 220 });
+    turbulence.value = withTiming(clamp((presence.turbulence + noise * 0.3) * (presence.thinking ? 0.8 : 1)), { duration: 220 });
+    attention.value = withTiming(clamp(presence.attention + (env?.camera ? 0.25 : 0) + (env?.userNear ? 0.15 : 0) + (env?.listening ? 0.1 : 0)), { duration: 220 });
     breathing.value = withTiming(presence.breathing, { duration: 260 }); pulse.value = withTiming(presence.pulse, { duration: 180 });
     eyeOpen.value = withTiming(clamp(presence.eyeOpenness * (1 - squint) * sleepy), { duration: 180 });
     eyeGlow.value = withTiming(presence.eyeGlow, { duration: 180 });
@@ -102,6 +110,8 @@ export default function DigitalBeing({ presence, size = 360, isDark: _isDark = t
   const eyeColor = useMemo(() => rgba(presence.eyeColor), [presence.eyeColor]);
   const fadeA = useMemo(() => rgba(presence.colorA, 0), [presence.colorA]);
   const fadeB = useMemo(() => rgba(presence.colorB, 0), [presence.colorB]);
+  const sweepA = useMemo(() => rgba(presence.colorB, 0.25), [presence.colorB]);
+  const sweepB = useMemo(() => rgba(presence.colorA, 0.25), [presence.colorA]);
   const eyeOpacity = useDerivedValue(() => clamp(0.68 + eyeGlow.value * 0.3));
   const fieldOpacity = useDerivedValue(() => clamp((0.2 + energy.value * 0.34 + attention.value * 0.2 + warmth.value * 0.08 + proximity.value * 0.08) * dim.value, 0, 0.88));
   const coreRadius = useDerivedValue(() => core * (1 + Math.sin(fast.value / 1000 * (0.65 + breathing.value * 0.45)) * 0.035 * breathing.value + Math.max(0, Math.sin(fast.value / 1000 * (2.4 + pulse.value * 4))) * 0.025 * pulse.value));
@@ -112,7 +122,8 @@ export default function DigitalBeing({ presence, size = 360, isDark: _isDark = t
   const touchGlow = useDerivedValue(() => clamp(0.04 + touch.value * 0.42));
   const voiceRipple = useDerivedValue(() => clamp(0.03 + voice.value * 0.32));
   const listenGlow = useDerivedValue(() => clamp(lst.value * 0.3));
-  const particlePath = useParticlePath(cx, cy, core * 1.25, speed, anticipation, slow);
+  const sweepOpacity = useDerivedValue(() => clamp(attention.value * 0.15 + voice.value * 0.25 + anticipation.value * 0.1));
+  const particlePath = useParticlePath(cx, cy, core * 1.25, speed, anticipation, energy, slow);
   const orbit1 = useOrbitPath(cx, cy, core * 1.05, 0.0, 1, 0.86, speed, turbulence, breathing, pulse, orbitality, slow);
   const orbit2 = useOrbitPath(cx, cy, core * 1.16, 0.8, -1, 0.72, speed, turbulence, breathing, pulse, orbitality, slow);
   const orbit3 = useOrbitPath(cx, cy, core * 1.3, 1.55, 1, 0.58, speed, turbulence, breathing, pulse, orbitality, slow);
@@ -120,6 +131,13 @@ export default function DigitalBeing({ presence, size = 360, isDark: _isDark = t
   const orbit5 = useOrbitPath(cx, cy, core * 1.58, 3.0, 1, 0.4, speed, turbulence, breathing, pulse, orbitality, slow);
   const orbit6 = useOrbitPath(cx, cy, core * 1.72, 3.65, -1, 0.34, speed, turbulence, breathing, pulse, orbitality, slow);
   const orbit7 = useOrbitPath(cx, cy, core * 1.86, 4.25, 1, 0.3, speed, turbulence, breathing, pulse, orbitality, slow);
+  // ✅ التطور المرئي: طبقات الغشاء تظهر مع نضج العلاقة
+  const orbits = [
+    { p: orbit1, w: 1.55, c: colorB, o: 0.58, m: 0 }, { p: orbit2, w: 1.35, c: colorA, o: 0.48, m: 0 },
+    { p: orbit3, w: 1.2, c: colorB, o: 0.42, m: 0.15 }, { p: orbit4, w: 1.05, c: colorA, o: 0.36, m: 0.3 },
+    { p: orbit5, w: 0.9, c: colorB, o: 0.3, m: 0.45 }, { p: orbit6, w: 0.75, c: colorA, o: 0.22, m: 0.6 },
+    { p: orbit7, w: 0.65, c: colorB, o: 0.18, m: 0.75 },
+  ];
   const leftEye = useEyePath(cx, cy, -1, size, eyeOpen, gazeX, gazeY, eyeTilt, separation, presence.thinking, presence.speaking, slow);
   const rightEye = useEyePath(cx, cy, 1, size, eyeOpen, gazeX, gazeY, eyeTilt, separation, presence.thinking, presence.speaking, slow);
   const liX = useDerivedValue(() => cx - size * 0.07 * separation.value + gazeX.value * size * 0.026);
@@ -137,13 +155,10 @@ export default function DigitalBeing({ presence, size = 360, isDark: _isDark = t
         <Circle cx={cx} cy={cy} r={haloRadius} opacity={coreGlow}>
           <RadialGradient c={vec(cx, cy)} r={core * 1.72} colors={[rgba(presence.colorB, 0.38), rgba(presence.colorA, 0.18), fadeB]} />
         </Circle>
-        <Path path={orbit7} style="stroke" strokeWidth={0.65} color={colorB} opacity={0.18} />
-        <Path path={orbit6} style="stroke" strokeWidth={0.75} color={colorA} opacity={0.22} />
-        <Path path={orbit5} style="stroke" strokeWidth={0.9} color={colorB} opacity={0.3} />
-        <Path path={orbit4} style="stroke" strokeWidth={1.05} color={colorA} opacity={0.36} />
-        <Path path={orbit3} style="stroke" strokeWidth={1.2} color={colorB} opacity={0.42} />
-        <Path path={orbit2} style="stroke" strokeWidth={1.35} color={colorA} opacity={0.48} />
-        <Path path={orbit1} style="stroke" strokeWidth={1.55} color={colorB} opacity={0.58} />
+        {orbits.map((o, i) => maturity >= o.m && <Path key={i} path={o.p} style="stroke" strokeWidth={o.w} color={o.c} opacity={o.o} />)}
+        <Circle cx={cx} cy={cy} r={core * 1.5} style="stroke" strokeWidth={1.2} opacity={sweepOpacity}>
+          <SweepGradient c={vec(cx, cy)} colors={[sweepA, '#FFFFFF10', sweepB]} />
+        </Circle>
         <Circle cx={cx} cy={cy} r={rippleRadius} style="stroke" strokeWidth={0.75} color={colorB} opacity={voiceRipple} />
         <Circle cx={cx} cy={cy} r={listenRadius} style="stroke" strokeWidth={0.7} color={colorA} opacity={listenGlow} />
         <Circle cx={cx} cy={cy} r={core * 1.92} style="stroke" strokeWidth={0.55} color={colorA} opacity={0.12} />
