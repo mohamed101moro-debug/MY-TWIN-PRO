@@ -1,4 +1,4 @@
-"""Belief System v2.0 - معتقدات بثقة وأدلة وتناقضات وتطور."""
+"""Belief System v2.1 — معتقدات بثقة وأدلة وتناقضات، في عمود beliefs القائم."""
 import logging
 from typing import List, Dict, Any
 from datetime import datetime, timezone
@@ -7,27 +7,24 @@ class BeliefSystem:
     async def _load(self, user_id: str) -> List[Dict[str, Any]]:
         try:
             from app.infrastructure.database.supabase_client import get_db
-            res = get_db().table("twin_internal_states").select("beliefs_v2, beliefs").eq("user_id", user_id).maybe_single().execute()
-            data = res.data or {}
-            v2 = data.get("beliefs_v2")
-            if v2 is not None:
-                return v2
-            old = data.get("beliefs") or []
-            return [{"text": b, "confidence": 0.5, "evidence": 1, "origin": "legacy", "last_validated": None, "contradictions": 0, "status": "active"} if isinstance(b, str) else b for b in old]
+            res = get_db().table("twin_internal_states").select("beliefs").eq("user_id", user_id).maybe_single().execute()
+            raw = ((res.data or {}).get("beliefs")) or []
+            return [({"text": b, "confidence": 0.5, "evidence": 1, "origin": "legacy", "last_validated": None, "contradictions": 0, "status": "active"}) if isinstance(b, str) else b for b in raw]
         except Exception:
             return []
     async def _save(self, user_id: str, beliefs: List[Dict[str, Any]]):
         try:
             from app.infrastructure.database.supabase_client import get_db
-            get_db().table("twin_internal_states").upsert({"user_id": user_id, "beliefs_v2": beliefs, "updated_at": datetime.now(timezone.utc).isoformat()}, on_conflict="user_id").execute()
-        except Exception:
-            pass
+            get_db().table("twin_internal_states").upsert(
+                {"user_id": user_id, "beliefs": beliefs, "updated_at": datetime.now(timezone.utc).isoformat()},
+                on_conflict="user_id").execute()
+        except Exception as e:
+            logger.debug(f"belief save: {e}")
     async def get_beliefs(self, user_id: str) -> List[Dict[str, Any]]:
         return await self._load(user_id)
     async def record_evidence(self, user_id: str, text: str, origin: str = "experience") -> Dict[str, Any]:
         text = (text or "").strip()[:160]
-        if not text:
-            return {}
+        if not text: return {}
         beliefs = await self._load(user_id)
         now = datetime.now(timezone.utc).isoformat()
         for b in beliefs:
@@ -48,8 +45,7 @@ class BeliefSystem:
             if b.get("text") == text and b.get("status") == "active":
                 b["contradictions"] = (b.get("contradictions") or 0) + 1
                 b["confidence"] = max(0.1, (b.get("confidence") or 0.5) - 0.1)
-                if b["contradictions"] >= 3:
-                    b["status"] = "revising"
+                if b["contradictions"] >= 3: b["status"] = "revising"
                 await self._save(user_id, beliefs)
                 return b
         return {}
@@ -57,11 +53,9 @@ class BeliefSystem:
         try:
             from app.memory.retrieval.memory_retriever import get_recent_chat
             recent = await get_recent_chat(user_id, limit=50)
-            if not recent:
-                return []
+            if not recent: return []
             text = "\n".join([f"المستخدم: {m.get('content', '')[:200]}" for m in recent if m.get('role') == 'user'])
-            if len(text) < 200:
-                return []
+            if len(text) < 200: return []
             from app.infrastructure.ai.ai_gateway import ai_gateway
             prompt = f"استخلص 1-3 قناعات لدى هذا المستخدم كجمل قصيرة بالعامية المصرية.\nالمحادثات:\n{text[:3000]}"
             result, _ = await ai_gateway.route(prompt, task="general")
@@ -75,4 +69,4 @@ class BeliefSystem:
             logger.debug(f"Belief update skipped: {e}")
             return []
 belief_system = BeliefSystem()
-logger.info("✅ Belief System v2.0 ready (confidence + evidence + contradictions)")
+logger.info("✅ Belief System v2.1 ready (beliefs column + confidence/evidence/contradictions)")

@@ -156,3 +156,8 @@ async def belief_test(user_id: str):
     except Exception as e:
         out["load_error"] = f"{type(e).__name__}: {str(e)[:200]}"
     return out
+
+@router.get("/predict-test")
+async def predict_test(user_id: str):
+    from app.twin_state.prediction_engine import prediction_engine
+    return {"prediction": await prediction_engine.predict_tomorrow(user_id)}

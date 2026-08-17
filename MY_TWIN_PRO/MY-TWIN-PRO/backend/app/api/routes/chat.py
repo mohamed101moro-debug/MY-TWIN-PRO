@@ -96,6 +96,16 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id), ti
             if ev.get("first"):
                 await bump_identity(user_id, "first_experience", "أول تجربة مشتركة")
             await experience_engine.process_event(user_id, {"type": "message", "content": message[:200], "emotion": res.get("emotion"), "importance": int(40 + (res.get("intensity") or 0.5) * 40)})
+            try:
+                from app.twin_state.internal_state import twin_internal_state as _ist
+                _lp = (await _ist.get_state(user_id)).get("last_prediction")
+                if _lp:
+                    _ok = (res.get("emotion") or "neutral") == _lp.get("mood")
+                    await append_event(user_id, "PredictionConfirmed" if _ok else "PredictionFailed", {"predicted": _lp.get("mood"), "actual": res.get("emotion")})
+                    await _ist.update_field(user_id, "last_prediction", None)
+            except Exception:
+                pass
+
         _a2.create_task(_log_life())
     except Exception:
         pass
