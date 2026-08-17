@@ -26,7 +26,7 @@ async def bump_identity(user_id: str, trigger: str, summary: str = "") -> None:
         db = get_db()
         last = db.table("identity_versions").select("version").eq("user_id", user_id).order("version", desc=True).limit(1).execute()
         v = ((last.data or [{}])[0].get("version") or 0) + 1
-        db.table("identity_versions").insert({"user_id": user_id, "version": v, "trigger": trigger, "summary": summary}).execute()
+        db.table("identity_versions").insert({"user_id": user_id, "version": v, "trigger_kind": trigger, "summary": summary}).execute()
     except Exception as e:
         logger.debug(f"identity_version: {e}")
 

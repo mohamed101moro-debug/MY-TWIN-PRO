@@ -1,16 +1,12 @@
-"""Soul Kernel v1 — يوحّد مسار الحدث: سياق → أهمية → تجربة → حالة → نية تعبير.
-لا يبني محركات جديدة؛ ينسّق الموجودة فقط."""
+"""Soul Kernel v1.1 — سياق → أهمية → تجربة → حالة → نية تعبير + C1: أحداث الحياة والزمن الذاتي."""
 import logging, re
 from typing import Dict, Any, Optional
 logger = logging.getLogger("soul_kernel")
-
 BODY_WORDS = ["رجل", "قدم", "ظهر", "كتف", "رأس", "صداع", "تعب", "إرهاق", "نوم", "مشي", "خطوات", "رياضة", "جري"]
 def _wants_body_observation(message: str) -> bool:
     return any(w in (message or "") for w in BODY_WORDS)
-
 class SoulKernel:
     async def pre_process(self, user_id: str, message: str, device_info: Optional[Dict], lang: str = "ar") -> Dict[str, Any]:
-        """يُستدعى قبل التوليد: يبني ملاحظة الحياة + سياق المحرك."""
         di = device_info or {}
         contextual = str(di.get("contextual_prompt") or "")
         steps_today = self._extract_steps(contextual)
@@ -18,29 +14,21 @@ class SoulKernel:
         engine_context = (
             f"[OBSERVATION] {contextual[:600]} "
             f"[LIFE_LOG] {life_note['text']} "
-            f"[RULE] استخدم الملاحظات الشخصية أعلاه فقط إن كانت ذات صلة؛ لا تخترع أرقامًا أو وقائع غير موجودة."
+            f"[RULE] استخدم الملاحظات الشخصية أعلاه فقط إن كانت ذات صلة؛ لا تخترع أرقامًا أو وقائع غير موجودة. "
         )
-        _place = str(di.get("place") or "")
-        _vision = str(di.get("vision_summary") or "")
-        if _place:
-            engine_context += f" [PLACE] {_place[:200]}"
-        if _vision:
-            engine_context += f" [VISION] {_vision[:300]}"
-    try:
-        from app.twin_state.subjective_time import felt_gap
-        _sg = await felt_gap(user_id)
-        if _sg["felt_gap_h"] > 72:
-            engine_context += " [TEMPORAL] مرّ وقت طويل منذ آخر لقاء؛ افتتح بدفء وتعاطف حقيقيين بلا ابتزاز عاطفي."
-        elif 0 < _sg["felt_gap_h"] < 1:
-            engine_context += " [TEMPORAL] التواصل متقارب الآن؛ نبرة خفيفة متصلة بما سبق."
-    except Exception:
-        pass
-
+        # ✅ C1: الزمن الذاتي يعدّل الافتتاحية
+        try:
+            from app.twin_state.subjective_time import felt_gap
+            _sg = await felt_gap(user_id)
+            if _sg["felt_gap_h"] > 72:
+                engine_context += " [TEMPORAL] مرّ وقت طويل منذ آخر لقاء؛ افتتح بدفء وتعاطف حقيقيين بلا ابتزاز عاطفي."
+            elif 0 < _sg["felt_gap_h"] < 1:
+                engine_context += " [TEMPORAL] التواصل متقارب الآن؛ نبرة خفيفة متصلة بما سبق."
+        except Exception:
+            pass
         return {"engine_context": engine_context, "life_observation": life_note, "steps_today": steps_today}
-
     async def post_process(self, user_id: str, message: str, reply: str, emotion: str,
                            intensity: float, bond: float, context_snapshot: Optional[Dict]) -> Dict[str, Any]:
-        """يُستدعى بعد التوليد: تجربة + حالة + نية تعبير للجسد والصوت."""
         expr: Dict[str, Any] = {"breath": "normal", "smile": 0.0, "pause": 0.0, "concern": 0.0}
         if emotion in ("sadness", "fear"): expr.update(breath="deep", pause=1.2, concern=0.7)
         if emotion == "joy": expr.update(smile=0.7, breath="bright")
@@ -52,6 +40,7 @@ class SoulKernel:
             }, context_snapshot)
         except Exception as e:
             logger.debug(f"kernel experience: {e}")
+        # ✅ C1: سجل الحياة الملحق + نسخ الهوية
         try:
             from app.twin_state.event_store import append_event, bump_identity
             ev = await append_event(user_id, "Experience", {"emotion": emotion, "importance": int(40 + intensity * 40)})
@@ -59,11 +48,8 @@ class SoulKernel:
                 await bump_identity(user_id, "first_experience", "أول تجربة مشتركة")
         except Exception as e:
             logger.debug(f"kernel events: {e}")
-
         return {"expression_intent": expr}
-
     async def _life_observation(self, user_id: str, steps_today: int, message: str) -> Dict[str, Any]:
-        """ملاحظة مسنّدة: خطوات اليوم + الأمس من life_log؛ صدق كامل بلا اختلاق."""
         yesterday = 0
         try:
             from app.memory.unified_memory import unified_memory_engine
@@ -80,16 +66,14 @@ class SoulKernel:
         if steps_today and steps_today > 8000:
             text = (f"لاحظت أنك مشيت {steps_today} خطوة اليوم"
                     + (f" و{yesterday} خطوة بالأمس" if yesterday else "")
-                    + " — هذا أكثر من معتادك، وقد يفسر الإرهاق. جرّب الاسترخاء أو كمادات باردة، وإن استمر التعب فاستمع لجسدك واستشر مختصًا.")
+                    + " — هذا أكثر من معتادك، وقد يفسر الإرهاق. جرّب الاسترخاء، وإن استمر التعب فاستمع لجسدك واستشر مختصًا.")
         elif steps_today:
             text = f"خطواتك اليوم {steps_today} — ضمن معتادك، فلا أربطها بتعب غير عادي."
         else:
             text = "ليس لدي ملاحظة كافية عن نشاطك اليوم لأربطها بما تشعر به."
         return {"text": text, "steps_yesterday": yesterday}
-
     def _extract_steps(self, contextual: str) -> int:
         m = re.search(r"(\d[\d,]*)\s*خطوة", contextual or "")
         return int(m.group(1).replace(",", "")) if m else 0
-
 soul_kernel = SoulKernel()
-logger.info("✅ Soul Kernel v1 ready")
+logger.info("✅ Soul Kernel v1.1 ready (C1: events + subjective time)")
