@@ -1,4 +1,4 @@
-"""Belief System v2.1 — معتقدات بثقة وأدلة وتناقضات، في عمود beliefs القائم."""
+"""Belief System v2.2 — معتقدات بثقة/أدلة/تناقضات، محفوظة كلقطات في twin_events (جدول مثبت)."""
 import logging
 from typing import List, Dict, Any
 from datetime import datetime, timezone
@@ -6,16 +6,19 @@ logger = logging.getLogger("belief_system")
 class BeliefSystem:
     async def _load(self, user_id: str) -> List[Dict[str, Any]]:
         try:
-            from app.infrastructure.database.supabase_client import get_db
-            res = get_db().table("twin_internal_states").select("beliefs").eq("user_id", user_id).maybe_single().execute()
-            raw = ((res.data or {}).get("beliefs")) or []
+            from app.twin_state.event_store import get_timeline
+            evs = await get_timeline(user_id, 40)
+            snap = next((e for e in evs if e["type"] == "BeliefSnapshot"), None)
+            raw = ((snap or {}).get("payload") or {}).get("beliefs")
+            if raw is None:
+                return []
             return [({"text": b, "confidence": 0.5, "evidence": 1, "origin": "legacy", "last_validated": None, "contradictions": 0, "status": "active"}) if isinstance(b, str) else b for b in raw]
         except Exception:
             return []
     async def _save(self, user_id: str, beliefs: List[Dict[str, Any]]):
         try:
-            from app.infrastructure.database.supabase_client import get_db
-            get_db().table("twin_internal_states").upsert({"user_id": user_id, "beliefs": beliefs, "updated_at": datetime.now(timezone.utc).isoformat()}, on_conflict="user_id").execute()
+            from app.twin_state.event_store import append_event
+            await append_event(user_id, "BeliefSnapshot", {"beliefs": beliefs})
         except Exception as e:
             logger.debug(f"belief save: {e}")
     async def get_beliefs(self, user_id: str) -> List[Dict[str, Any]]:
@@ -67,4 +70,4 @@ class BeliefSystem:
             logger.debug(f"Belief update skipped: {e}")
             return []
 belief_system = BeliefSystem()
-logger.info("✅ Belief System v2.1 ready")
+logger.info("✅ Belief System v2.2 ready (event-snapshot persistence)")
