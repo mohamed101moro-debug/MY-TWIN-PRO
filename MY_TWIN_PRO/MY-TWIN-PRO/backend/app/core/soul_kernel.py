@@ -1,4 +1,4 @@
-"""Soul Kernel v1.1 — سياق → تجربة → حالة → نية تعبير + زمن ذاتي + سجل أحداث."""
+"""Soul Kernel v1.2 — سياق حي (مكان/رؤية/زمن) → تجربة → سجل أحداث → نية تعبير."""
 import logging, re
 from typing import Dict, Any, Optional
 logger = logging.getLogger("soul_kernel")
@@ -12,15 +12,15 @@ class SoulKernel:
         steps_today = self._extract_steps(contextual)
         life_note = await self._life_observation(user_id, steps_today, message)
         engine_context = (f"[OBSERVATION] {contextual[:600]} " f"[LIFE_LOG] {life_note['text']} " f"[RULE] استخدم الملاحظات الشخصية أعلاه فقط إن كانت ذات صلة؛ لا تخترع أرقامًا أو وقائع غير موجودة. ")
+        _place = str(di.get("place") or ""); _vision = str(di.get("vision_summary") or "")
+        if _place: engine_context += f" [PLACE] {_place[:200]}"
+        if _vision: engine_context += f" [VISION] {_vision[:300]}"
         try:
             from app.twin_state.subjective_time import felt_gap
             _sg = await felt_gap(user_id)
-            if _sg["felt_gap_h"] > 72:
-                engine_context += " [TEMPORAL] مرّ وقت طويل منذ آخر لقاء؛ افتتح بدفء وتعاطف حقيقيين بلا ابتزاز عاطفي."
-            elif 0 < _sg["felt_gap_h"] < 1:
-                engine_context += " [TEMPORAL] التواصل متقارب الآن؛ نبرة خفيفة متصلة بما سبق."
-        except Exception:
-            pass
+            if _sg["felt_gap_h"] > 72: engine_context += " [TEMPORAL] مرّ وقت طويل منذ آخر لقاء؛ افتتح بدفء وتعاطف حقيقيين بلا ابتزاز عاطفي."
+            elif 0 < _sg["felt_gap_h"] < 1: engine_context += " [TEMPORAL] التواصل متقارب الآن؛ نبرة خفيفة متصلة بما سبق."
+        except Exception: pass
         return {"engine_context": engine_context, "life_observation": life_note, "steps_today": steps_today}
     async def post_process(self, user_id: str, message: str, reply: str, emotion: str, intensity: float, bond: float, context_snapshot: Optional[Dict]) -> Dict[str, Any]:
         expr: Dict[str, Any] = {"breath": "normal", "smile": 0.0, "pause": 0.0, "concern": 0.0}
@@ -29,13 +29,11 @@ class SoulKernel:
         try:
             from app.twin_state.experience_engine import experience_engine
             await experience_engine.process_event(user_id, {"type": "message", "content": message[:200], "emotion": emotion, "importance": int(40 + intensity * 40 + (15 if bond and bond > 60 else 0))}, context_snapshot)
-        except Exception as e:
-            logger.debug(f"kernel experience: {e}")
+        except Exception as e: logger.debug(f"kernel experience: {e}")
         try:
             from app.twin_state.event_store import append_event
             await append_event(user_id, "Experience", {"emotion": emotion, "importance": int(40 + intensity * 40)})
-        except Exception as e:
-            logger.debug(f"kernel events: {e}")
+        except Exception as e: logger.debug(f"kernel events: {e}")
         return {"expression_intent": expr}
     async def _life_observation(self, user_id: str, steps_today: int, message: str) -> Dict[str, Any]:
         yesterday = 0
@@ -47,19 +45,16 @@ class SoulKernel:
                 if "[ENGINE:life_log]" in c:
                     msteps = re.search(r'"steps":\s*(\d+)', c)
                     if msteps: yesterday = max(yesterday, int(msteps.group(1)))
-        except Exception:
-            pass
+        except Exception: pass
         if not _wants_body_observation(message):
             return {"text": f"steps_today={steps_today or 'unknown'} steps_yesterday={yesterday or 'unknown'}", "steps_yesterday": yesterday}
         if steps_today and steps_today > 8000:
             text = (f"لاحظت أنك مشيت {steps_today} خطوة اليوم" + (f" و{yesterday} خطوة بالأمس" if yesterday else "") + " — هذا أكثر من معتادك، وقد يفسر الإرهاق. جرّب الاسترخاء، وإن استمر التعب فاستمع لجسدك واستشر مختصًا.")
-        elif steps_today:
-            text = f"خطواتك اليوم {steps_today} — ضمن معتادك، فلا أربطها بتعب غير عادي."
-        else:
-            text = "ليس لدي ملاحظة كافية عن نشاطك اليوم لأربطها بما تشعر به."
+        elif steps_today: text = f"خطواتك اليوم {steps_today} — ضمن معتادك، فلا أربطها بتعب غير عادي."
+        else: text = "ليس لدي ملاحظة كافية عن نشاطك اليوم لأربطها بما تشعر به."
         return {"text": text, "steps_yesterday": yesterday}
     def _extract_steps(self, contextual: str) -> int:
         m = re.search(r"(\d[\d,]*)\s*خطوة", contextual or "")
         return int(m.group(1).replace(",", "")) if m else 0
 soul_kernel = SoulKernel()
-logger.info("✅ Soul Kernel v1.1 ready (temporal + events)")
+logger.info("✅ Soul Kernel v1.2 ready (PLACE/VISION/TEMPORAL + events)")

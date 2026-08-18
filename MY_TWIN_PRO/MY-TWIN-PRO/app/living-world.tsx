@@ -4,6 +4,8 @@ import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { apiPost, apiGet } from '../lib/httpClient';
+import { useTwinBrain } from '../src/hooks/useTwinBrain';
+import { track, initAnalytics } from '../lib/analytics';
 import { useRTL } from '../lib/useRTL';
 import { useAppTheme } from '../engine/colors';
 import { useTwinStore } from '../store/useTwinStore';
@@ -56,6 +58,7 @@ export default function LivingWorld() {
   const [diag, setDiag] = useState('');
   const [tele, setTele] = useState<{ n: number; hb: number | null } | null>(null);
   const wingT = useRef<any>(null);
+  const brain = useTwinBrain(userId, lang);
   const light = useCallback((w: string, ms = 2600) => { setWing(w); if (wingT.current) clearTimeout(wingT.current); wingT.current = setTimeout(() => setWing(null), ms); }, []);
   useEffect(() => {
     if (userId) {
@@ -93,7 +96,9 @@ export default function LivingWorld() {
     };
     load();
     const iv = setInterval(load, 60000);
-    return () => { alive = false; clearInterval(iv); };
+    const sendSnap = async () => { try { const sn = devicePresenceEngine.getSensors(); await apiPost('/api/perception/snapshot', { steps: sn.stepCount, battery: sn.deviceBattery, walking: sn.userWalking, night: sn.isNightTime, audio_level: sn.audioLevel, face_detected: sn.faceDetected, weather: sn.weatherCondition, place: (global as any).__sharedPlace?.() ?? undefined }); } catch {} };
+    sendSnap(); const snapIv = setInterval(sendSnap, 300000);
+    return () => { alive = false; clearInterval(iv); clearInterval(snapIv); };
   }, []);
   const statusLine = tele
     ? (rtl.isRTL ? `${tele.n} محركًا حيًا • ${tele.hb != null ? `نبض قبل ${tele.hb}ث` : 'النبض نشط'} • ${online ? 'متصل' : 'دون اتصال'}` : `${tele.n} living engines • ${tele.hb != null ? `beat ${tele.hb}s ago` : 'beat active'} • ${online ? 'online' : 'offline'}`)
@@ -109,13 +114,7 @@ export default function LivingWorld() {
     setIsThinking(true);
     try {
       const sensors = devicePresenceEngine.getSensors();
-      const response: any = await apiPost('/api/chat', {
-        message: text, user_id: userId,
-        device_info: {
-          battery_level: sensors.deviceBattery, is_night: sensors.isNightTime, user_walking: sensors.userWalking,
-          place: sharedPresence.place || undefined, vision_summary: sharedPresence.vision_summary || undefined,
-        },
-      });
+      const response: any = await brain.sendMessage(text);
       const silence = Number(response?.silence_ms || 0);
       if (silence > 0) await new Promise(r => setTimeout(r, Math.min(silence, 3500)));
       setOnline(true); setDiag('');

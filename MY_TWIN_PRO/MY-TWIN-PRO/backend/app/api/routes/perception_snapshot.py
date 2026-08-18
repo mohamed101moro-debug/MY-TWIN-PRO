@@ -1,4 +1,4 @@
-"""لقطات المستشعرات من الجسد إلى العقل."""
+"""لقطات الحضور من الجسد إلى العقل — v2 بمكان ورؤية وإحداثيات."""
 import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
@@ -23,16 +23,14 @@ class SnapshotBody(BaseModel):
     vision_summary: Optional[str] = None
 @router.post("/snapshot")
 async def snapshot(body: SnapshotBody, user_id: str = Depends(get_current_user_id)):
+    data = {**body.dict(), "ts": datetime.now(timezone.utc).isoformat()}
+    if data.get("latitude") is not None and not data.get("place"):
+        try:
+            from app.api.routes.vision_routes import reverse_geocode
+            data["place"] = await reverse_geocode(data["latitude"], data["longitude"])
+        except Exception: pass
     try:
         from app.twin_state.internal_state import twin_internal_state as t
-        data = {**body.dict(), "ts": datetime.now(timezone.utc).isoformat()}
-        if data.get("latitude") is not None and not data.get("place"):
-            try:
-                from app.api.routes.vision_routes import reverse_geocode
-                data["place"] = await reverse_geocode(data["latitude"], data["longitude"])
-            except Exception:
-                pass
         await t.update_field(user_id, "last_perception", data)
-    except Exception as e:
-        logger.debug(f"snapshot store: {e}")
+    except Exception as e: logger.debug(f"snapshot store: {e}")
     return {"status": "ok"}
