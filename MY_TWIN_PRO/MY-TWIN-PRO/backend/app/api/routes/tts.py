@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict
 
 logger = logging.getLogger("tts_route")
-router = APIRouter(prefix="/api/tts", tags=["tts"])
+router = APIRouter(prefix="/api/tts-legacy", tags=["tts"])
 
 # ============================================================
 # Voice Mapping

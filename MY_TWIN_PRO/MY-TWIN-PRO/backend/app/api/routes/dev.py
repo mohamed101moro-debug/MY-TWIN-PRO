@@ -192,3 +192,17 @@ async def env_check():
         except Exception:
             libs[m] = False
     return {"env": env, "libs": libs}
+
+@router.get("/inner-spark")
+async def inner_spark(user_id: str):
+    """شرارة إثبات: يوقظ الفضول والفكرة الآن بدل انتظار دورة الساعة."""
+    from app.twin_state.unified_curiosity import unified_curiosity_engine
+    from app.twin_state.internal_state import twin_internal_state
+    try:
+        q = await unified_curiosity_engine.generate(user_id)
+        if q: await twin_internal_state.add_pending_question(user_id, q)
+        await twin_internal_state.set_last_thought(user_id, "أراجع لحظاتنا الأخيرة… هناك خيط جميل يربطها.")
+        st = await twin_internal_state.get_state(user_id)
+        return {"pending_questions": (st.get("pending_questions") or [])[-3:], "last_thought": st.get("last_thought")}
+    except Exception as e:
+        return {"error": str(e)[:200]}
