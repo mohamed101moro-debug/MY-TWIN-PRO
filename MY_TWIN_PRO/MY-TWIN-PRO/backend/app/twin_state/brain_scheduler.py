@@ -59,7 +59,13 @@ class BrainScheduler:
             db = get_db()
             cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
             res = db.table("user_devices").select("user_id").gte("last_active", cutoff).execute()
-            return list(set(r["user_id"] for r in (res.data or [])))
+            ids = set(r["user_id"] for r in (res.data or []))
+            try:
+                wm = db.table("working_memory").select("user_id").gte("created_at", cutoff).execute()
+                ids |= set(r["user_id"] for r in (wm.data or []))
+            except Exception:
+                pass
+            return list(ids)
         except:
             return []
 
@@ -288,7 +294,8 @@ class BrainScheduler:
                 identity = identity_engine.evaluate(bond_level=50, interaction_count=0, memory_count=0)
                 decision = decision_engine.decide(goal["primary_goal"], identity["role"], 50, "neutral", 0.5, "normal", "morning")
                 internal = internal_state_engine.evaluate("neutral", 50, 0.7)
-                twin = twin_energy_engine.update(50, datetime.now(timezone.utc).hour)
+                import asyncio as _a
+            twin = await twin_energy_engine.get_energy_state(uid)
                 reflection = reflection_engine.reflect(50, identity["role"])
                 
                 # تخزين المخرجات في TCMA
