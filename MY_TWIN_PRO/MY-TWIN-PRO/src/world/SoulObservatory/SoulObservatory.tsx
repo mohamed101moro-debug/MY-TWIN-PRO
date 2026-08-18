@@ -17,6 +17,7 @@ import BringAnotherSoulWing from './BringAnotherSoulWing';
 import SignalsWing from './SignalsWing';
 import LifeReflectionWing from './LifeReflectionWing';
 import MyIdentityWing from './MyIdentityWing';
+import LifeWing from './LifeWing';
 import { X, Heart, Clock, TreePine, Brain, Grid3X3, Settings, Info, HelpCircle, Crown, Gift, Bell, Activity, User } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
@@ -37,6 +38,7 @@ const WINGS = [
   { id: 'signals', icon: Bell, label_ar: 'الإشارات', label_en: 'Signals', component: SignalsWing, color: '#F59E0B' },
   { id: 'lifereflection', icon: Activity, label_ar: 'تأمل الحياة', label_en: 'Life Reflection', component: LifeReflectionWing, color: '#10B981' },
   { id: 'myidentity', icon: User, label_ar: 'هويتي', label_en: 'My Identity', component: MyIdentityWing, color: '#3B82F6' },
+  { id: 'life', icon: Heart, label_ar: 'حياتي', label_en: 'My Life', component: LifeWing, color: '#8B5CF6' },
 ];
 
 export default function SoulObservatory() {

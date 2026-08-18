@@ -25,3 +25,24 @@ async def inner(user_id: str = Depends(get_current_user_id)):
     from app.twin_state.internal_state import twin_internal_state as t
     st = await t.get_state(user_id)
     return {"pending_questions": (st.get("pending_questions") or [])[-3:], "last_thought": st.get("last_thought"), "energy": st.get("energy_level")}
+
+@router.get("/constitution")
+async def constitution(user_id: str = Depends(get_current_user_id)):
+    from app.twin_state.constitution_drift import get_weights, changelog
+    w = await get_weights(user_id)
+    return {**w, "changelog": await changelog(user_id)}
+
+@router.get("/autonomy")
+async def autonomy(user_id: str = Depends(get_current_user_id)):
+    from app.twin_state.autonomy_ladder import level_for
+    return await level_for(user_id)
+
+@router.get("/autonomy/audit")
+async def autonomy_audit(user_id: str = Depends(get_current_user_id)):
+    from app.twin_state.autonomy_ladder import audit
+    return {"audit": await audit(user_id)}
+
+@router.post("/autonomy/consent")
+async def autonomy_consent(user_id: str = Depends(get_current_user_id), scope: str = "external", granted: bool = True):
+    from app.twin_state.autonomy_ladder import set_consent
+    return await set_consent(user_id, scope, granted)
