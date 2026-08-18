@@ -1,5 +1,5 @@
 import { session } from './SessionHolder';
-import { sensorBridge } from '../../engine/sensor/SensorBridge';
+import { sensorBridge } from './SensorBridge';
 import { devicePresenceEngine } from '../../engine/device/DevicePresenceEngine';
 import { stateBus } from './StateBus';
 import { apiGet } from '../../lib/httpClient';
