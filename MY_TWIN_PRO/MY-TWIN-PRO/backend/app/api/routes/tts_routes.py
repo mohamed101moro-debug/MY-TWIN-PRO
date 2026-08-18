@@ -14,3 +14,6 @@ async def tts(req: TTSRequest, tier: str = Depends(get_user_tier)):
     from app.infrastructure.voice.voice_gateway import synthesize
     out = await synthesize(req.text, req.language, req.gender, tier)
     return {**out, "language": req.language, "tier": tier}
+@router.post("/")
+async def tts_slash(req: TTSRequest, tier: str = Depends(get_user_tier)):
+    return await tts(req, tier)
