@@ -178,3 +178,17 @@ async def ist_test(user_id: str):
     except Exception as e:
         out["upsert_error"] = str(e)[:200]
     return out
+
+@router.get("/env-check")
+async def env_check():
+    """تدقيق Railway: وجود المتغيرات والمكتبات (بدون كشف القيم)."""
+    import os
+    keys = ["GEMINI_API_KEY","GEMINI_API_KEY_2","GEMINI_API_KEY_3","GEMINI_IMAGE_API_KEY","GROQ_API_KEY","GROQ_API_KEY_2","OPENROUTER_API_KEY","HUGGINGFACE_API_KEY","SUPABASE_URL","SUPABASE_SERVICE_KEY","ONESIGNAL_APP_ID","ONESIGNAL_REST_KEY","REDIS_URL","WHISPER_MODEL","SOUL_SYNC_INTERNAL_KEY"]
+    env = {k: bool(os.getenv(k)) for k in keys}
+    libs = {}
+    for m in ("edge_tts","vosk","faster_whisper","openai","aiohttp","supabase","httpx"):
+        try:
+            __import__(m); libs[m] = True
+        except Exception:
+            libs[m] = False
+    return {"env": env, "libs": libs}
