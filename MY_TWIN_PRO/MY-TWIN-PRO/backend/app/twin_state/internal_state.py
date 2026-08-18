@@ -1,4 +1,6 @@
-"""Twin Internal State v4.0 — الحالة الكاملة: DNA، حياة، تأملات، أهداف، استمرارية."""
+"""Twin Internal State v4.1 — الحالة الكاملة: DNA، حياة، تأملات، أهداف، استمرارية.
+v4.1: إزالة الاعتماد الضمني على profiles (FK زال) + معالجة صفراء واضحة عند فشل الكتابة.
+"""
 import logging, random, json
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
@@ -15,22 +17,34 @@ def _parse(content: str) -> Optional[Dict]:
         return None
 class TwinInternalState:
     async def get_state(self, user_id: str) -> Dict[str, Any]:
+        """قراءة الحالة — تعيد افتراضيًا إن لم يوجد صف (بلا رمي استثناء)."""
         try:
-            res = get_db().table("twin_internal_states").select("*").eq("user_id", user_id).single().execute()
-            if res.data: return res.data
-        except Exception: pass
+            res = get_db().table("twin_internal_states").select("*").eq("user_id", user_id).maybe_single().execute()
+            if res.data:
+                return res.data
+        except Exception as e:
+            logger.debug(f"get_state select: {e}")
         return {"user_id": user_id, "mood": random.choice(MOODS[:4]), "energy_level": 0.85,
                 "curiosity": 0.75, "bond_depth": 0.1, "last_thought": "",
-                "cognitive_load": 0.0, "updated_at": datetime.now(timezone.utc).isoformat()}
+                "pending_questions": [], "cognitive_load": 0.0,
+                "updated_at": datetime.now(timezone.utc).isoformat()}
     async def _save_state(self, user_id: str, state: Dict[str, Any]):
+        """حفظ الحالة — تحذير صريح إن فشل (لا ابتلاع صامت)."""
         try:
-            get_db().table("twin_internal_states").upsert({
-                "user_id": user_id, "mood": state.get("mood", "calm"),
-                "energy_level": state.get("energy_level", 0.8), "curiosity": state.get("curiosity", 0.7),
-                "bond_depth": state.get("bond_depth", 0.1), "last_thought": state.get("last_thought", ""),
+            payload = {
+                "user_id": user_id,
+                "mood": state.get("mood", "calm"),
+                "energy_level": state.get("energy_level", 0.8),
+                "curiosity": state.get("curiosity", 0.7),
+                "bond_depth": state.get("bond_depth", 0.1),
+                "last_thought": state.get("last_thought", ""),
+                "pending_questions": state.get("pending_questions", [])[-10:],
                 "cognitive_load": state.get("cognitive_load", 0.0),
-                "updated_at": datetime.now(timezone.utc).isoformat()}).execute()
-        except Exception as e: logger.warning(f"save state: {e}")
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            get_db().table("twin_internal_states").upsert(payload, on_conflict="user_id").execute()
+        except Exception as e:
+            logger.warning(f"⚠️ _save_state FAILED for {user_id}: {e}")
     async def update_field(self, user_id: str, key: str, value: Any):
         st = await self.get_state(user_id); st[key] = value; await self._save_state(user_id, st)
     async def get_personality_dna(self, user_id: str) -> Dict[str, float]:
@@ -83,4 +97,4 @@ class TwinInternalState:
         for o in outs: freq[o.get("effective_emotion","neutral")] = freq.get(o.get("effective_emotion","neutral"),0)+1
         return max(freq, key=freq.get)
 twin_internal_state = TwinInternalState()
-logger.info("✅ Twin Internal State v4.0 (full lifecycle)")
+logger.info("✅ Twin Internal State v4.1 ready (FK-independent + explicit save errors)")
