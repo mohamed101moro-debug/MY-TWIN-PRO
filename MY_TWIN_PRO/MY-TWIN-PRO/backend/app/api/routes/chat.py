@@ -40,6 +40,14 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id), ti
         except Exception: phase = "stranger"
         base = {"reply": await _opening(user_id, phase), "emotion": "neutral", "intensity": 0.3,
                 "bond_level": 0, "phase": phase, "silence_ms": 1200, "limits": {"can_send": True, "remaining": 0}}
+        try:
+            from app.twin_state.internal_state import twin_internal_state as _t
+            _st = await _t.get_state(user_id)
+            _pq = (_st.get("pending_questions") or [])
+            if _pq:
+                base["reply"] += "\n\n" + str(_pq[-1])
+        except Exception:
+            pass
         return build_envelope(base, rid)
     gate_note = None
     if req.requested_capability:
@@ -78,6 +86,19 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id), ti
     limits = res.get("limits", {})
     if not limits.get("can_send", True):
         reply = ENERGY["exhausted"] + "\nيمكنك منحي انتعاشًا أو ترقيتي لأبقى بكامل حضوري."
+    try:
+        from app.engine.energy.twin_energy_engine import twin_energy_engine
+        _eb = await twin_energy_engine.get_energy_state(user_id, tier, int(res.get("bond_level", 50) or 50), device_battery=(req.device_info or {}).get("battery_level"))
+        _rb = _eb.get("response_behavior") or {}
+        _ml = int(_rb.get("max_length") or 600)
+        if len(reply) > _ml:
+            reply = reply[:_ml].rsplit(" ", 1)[0] + " …"
+        if _eb.get("is_low_energy") and _rb.get("should_suggest_rest"):
+            reply += "\n(طاقتي منخفضة قليلًا الآن؛ انتعاشٌ أو ترقية يعيدان كامل حضوري.)"
+        import asyncio as _a3
+        _a3.create_task(twin_energy_engine.consume_interaction(user_id, float(res.get("intensity") or 0.5)))
+    except Exception:
+        pass
     res["reply"] = reply
     try:
         import asyncio as _a

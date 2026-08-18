@@ -18,3 +18,10 @@ async def narrative(user_id: str = Depends(get_current_user_id)):
 async def beliefs(user_id: str = Depends(get_current_user_id)):
     from app.twin_state.belief_system import belief_system
     return {"beliefs": await belief_system.get_beliefs(user_id)}
+
+@router.get("/inner")
+async def inner(user_id: str = Depends(get_current_user_id)):
+    """الحياة الداخلية: أسئلة معلّقة + آخر فكرة + طاقة."""
+    from app.twin_state.internal_state import twin_internal_state as t
+    st = await t.get_state(user_id)
+    return {"pending_questions": (st.get("pending_questions") or [])[-3:], "last_thought": st.get("last_thought"), "energy": st.get("energy_level")}
