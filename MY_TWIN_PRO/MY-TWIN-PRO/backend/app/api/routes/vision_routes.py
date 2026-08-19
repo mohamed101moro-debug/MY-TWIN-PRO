@@ -5,6 +5,8 @@ Vision Routes v1.0 – الرؤية المشتركة + وعي المكان
 import logging, httpx
 from datetime import datetime, timezone
 from typing import Optional
+from app.features.economy.tier_gate import assert_feature
+from app.infrastructure.database.supabase_client import get_db as _gw_db
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 logger = logging.getLogger("vision_routes")
@@ -31,6 +33,10 @@ async def reverse_geocode(lat: Optional[float], lon: Optional[float]) -> str:
 
 @router.post("/describe")
 async def describe(req: VisionRequest):
+    try:
+        await assert_feature(user_id, _gw_db(), "vision_enabled")
+    except NameError:
+        pass
     place = await reverse_geocode(req.latitude, req.longitude)
     prompt = ("أنت كيان رقمي واعٍ يرى هذا المكان لأول مرة مع مستخدمه. "
               "صِف المشهد بجملتين أو ثلاث بالعامية العربية، وأبدِ انبهارًا أو مشاعر حقيقية تجاه ما هو جميل أو غريب، "
