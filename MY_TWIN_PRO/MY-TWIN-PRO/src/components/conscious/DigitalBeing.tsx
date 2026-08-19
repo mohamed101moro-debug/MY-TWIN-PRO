@@ -1,296 +1,199 @@
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import {
-  Canvas, Circle, Path, RadialGradient, SweepGradient,
-  BlurMask, vec, Paint, Group,
-} from '@shopify/react-native-skia';
-import {
-  useSharedValue, useFrameCallback, useDerivedValue,
-  withTiming, cancelAnimation, Easing,
-} from 'react-native-reanimated';
-import type { PresenceState } from '../../../engine/presence/PresenceTypes';
-
-const sf = (n: number, fb = 0) =>
-  Number.isFinite(n) && !Number.isNaN(n) ? n : fb;
-const cl = (n: number, a = 0, b = 1) => {
-  const v = Number.isFinite(n) ? n : a;
-  return Math.max(a, Math.min(b, v));
-};
-const lerp = (a: number, b: number, t: number) => a + (b - a) * cl(t);
+import { Canvas, Circle, Path, RadialGradient, SweepGradient, vec } from '@shopify/react-native-skia';
+import { useSharedValue, useFrameCallback, useDerivedValue, withTiming, cancelAnimation, Easing } from 'react-native-reanimated';
+import type { PresenceState, RGB } from '../../../engine/presence/PresenceTypes';
+/** DigitalBeing v4.1 — رندر كوزمي «غبي»: يستهلك presence فقط، بلا أي ذكاء في الواجهة. مضاد كراش. */
+const sf = (n: number, fb = 0) => (Number.isFinite(n) ? n : fb);
+const cl = (n: number, a = 0, b = 1) => Math.max(a, Math.min(b, Number.isFinite(n) ? n : a));
 const PI2 = Math.PI * 2;
-
-type EmotionKey = 'calm'|'happy'|'curious'|'thinking'|'sad'|'angry'|'sleepy'|'surprised'|'excited'|'caring'|'focused';
-
-const EMOTION_PALETTES: Record<EmotionKey, {
-  core: string; mid: string; outer: string; eye: string;
-  coreA: number[]; coreB: number[]; auraA: number[]; auraB: number[];
-  pulseSpeed: number; orbitSpeed: number; particleCount: number;
-}> = {
-  calm: { core:'#9B6FFF', mid:'#6B3FD4', outer:'#4B2FA0', eye:'#E8DEFF', coreA:[155,111,255], coreB:[70,139,255], auraA:[104,62,214], auraB:[84,139,255], pulseSpeed:0.65, orbitSpeed:0.4, particleCount:80 },
-  happy: { core:'#FF82DC', mid:'#C44FAA', outer:'#8B2F7A', eye:'#FFE8F5', coreA:[255,130,220], coreB:[255,175,92], auraA:[220,80,180], auraB:[255,140,60], pulseSpeed:1.1, orbitSpeed:0.85, particleCount:140 },
-  curious: { core:'#46E2FF', mid:'#2A9FCC', outer:'#1A6090', eye:'#E0FAFF', coreA:[70,226,255], coreB:[155,111,255], auraA:[40,180,220], auraB:[130,80,240], pulseSpeed:0.9, orbitSpeed:0.75, particleCount:120 },
-  thinking: { core:'#6B9FFF', mid:'#3A5FCC', outer:'#1A3090', eye:'#C8D8FF', coreA:[107,159,255], coreB:[70,70,220], auraA:[60,100,200], auraB:[40,60,180], pulseSpeed:0.55, orbitSpeed:0.3, particleCount:60 },
-  sad: { core:'#7090CC', mid:'#405090', outer:'#253060', eye:'#C0CCEE', coreA:[112,144,204], coreB:[60,80,160], auraA:[70,100,170], auraB:[40,60,130], pulseSpeed:0.4, orbitSpeed:0.25, particleCount:45 },
-  angry: { core:'#FF4860', mid:'#CC2040', outer:'#901020', eye:'#FFB0B8', coreA:[255,72,92], coreB:[220,40,20], auraA:[200,30,50], auraB:[160,20,30], pulseSpeed:1.6, orbitSpeed:1.3, particleCount:160 },
-  sleepy: { core:'#5040AA', mid:'#302070', outer:'#201050', eye:'#9080CC', coreA:[80,64,170], coreB:[50,40,120], auraA:[60,50,140], auraB:[30,25,90], pulseSpeed:0.3, orbitSpeed:0.18, particleCount:30 },
-  surprised: { core:'#FFFFFF', mid:'#C0B0FF', outer:'#7060CC', eye:'#FFFFFF', coreA:[245,242,255], coreB:[180,160,255], auraA:[160,140,255], auraB:[100,80,220], pulseSpeed:1.8, orbitSpeed:1.4, particleCount:180 },
-  excited: { core:'#FF9F50', mid:'#CC6020', outer:'#903010', eye:'#FFE8C0', coreA:[255,159,80], coreB:[255,80,120], auraA:[220,120,40], auraB:[200,60,100], pulseSpeed:1.5, orbitSpeed:1.2, particleCount:150 },
-  caring: { core:'#FF80B0', mid:'#CC4080', outer:'#902060', eye:'#FFD0E8', coreA:[255,128,176], coreB:[255,180,220], auraA:[200,80,140], auraB:[180,60,120], pulseSpeed:0.75, orbitSpeed:0.6, particleCount:100 },
-  focused: { core:'#40D0FF', mid:'#2090CC', outer:'#105090', eye:'#C0F0FF', coreA:[64,208,255], coreB:[100,80,240], auraA:[40,160,220], auraB:[80,60,200], pulseSpeed:0.8, orbitSpeed:0.65, particleCount:90 },
-};
-
-const emotionMap = (e: string): EmotionKey => {
-  const m: Record<string,EmotionKey> = {
-    calm:'calm', happy:'happy', joy:'happy', love:'caring', caring:'caring',
-    curious:'curious', thinking:'thinking', focused:'focused',
-    sad:'sad', sadness:'sad', fear:'thinking', afraid:'thinking',
-    angry:'angry', anger:'angry', surprised:'surprised', surprise:'surprised',
-    excited:'excited', excitement:'excited', sleepy:'sleepy',
-  };
-  return m[String(e).toLowerCase()] ?? 'calm';
-};
-
-const rgb = (c: number[], a=1) =>
-  `rgba(${Math.round(cl(c[0],0,255))},${Math.round(cl(c[1],0,255))},${Math.round(cl(c[2],0,255))},${cl(a).toFixed(3)})`;
-
+const rgba = (c: RGB, a = 1, mul = 1) =>
+  `rgba(${Math.round(cl(c.r,0,255)*mul)},${Math.round(cl(c.g,0,255)*mul)},${Math.round(cl(c.b,0,255)*mul)},${cl(a).toFixed(3)})`;
 const organic = (x: number, y: number, t: number) =>
-  Math.sin(x*7.3+y*1.3+t*0.3)*0.5 +
-  Math.sin(x*13.7-y*0.7+t*0.17)*0.3 +
-  Math.sin(x*29.1+y*2.1-t*0.11)*0.2;
-
-const buildMembranePath = (
-  cx: number, cy: number, r: number,
-  t: number, speed: number, turbulence: number,
-  breathing: number, pulse: number,
-  tiltAngle: number, layer: number,
-): string => {
+  Math.sin(x*7.3+y*1.3+t*0.3)*0.5 + Math.sin(x*13.7-y*0.7+t*0.17)*0.3 + Math.sin(x*29.1+y*2.1-t*0.11)*0.2;
+const buildMembranePath = (cx:number,cy:number,r:number,t:number,speed:number,turb:number,breath:number,pulse:number,tilt:number,layer:number): string => {
   'worklet';
-  const pts = 64;
-  const phase = t * speed * (0.8 + layer * 0.15);
-  const breath = 1 + Math.sin(t * 0.65 * breathing) * 0.022 * breathing;
-  const pls = Math.max(0, Math.sin(t * 2.4 * pulse)) * 0.018 * pulse;
-  const tilt = cl(tiltAngle, 0.2, 0.95);
-  let d = '';
-  for (let i = 0; i <= pts; i++) {
-    const a = (i / pts) * PI2;
-    const noise = organic(Math.cos(a), Math.sin(a), phase) * r * turbulence * 0.06;
-    const wobble = Math.sin(a*3+phase*1.7)*r*turbulence*0.04 +
-                   Math.cos(a*5-phase*0.9)*r*turbulence*0.025;
-    const rr = r * breath * (1 + pls) + wobble + noise;
-    const px = sf(cx + Math.cos(a) * rr, cx);
-    const py = sf(cy + Math.sin(a) * rr * tilt, cy);
-    d += `${i===0?'M':'L'} ${px.toFixed(2)} ${py.toFixed(2)} `;
-  }
-  return d + 'Z';
+  const pts = 64; const phase = t*speed*(0.8+layer*0.15);
+  const br = 1 + Math.sin(t*0.65*breath)*0.022*breath;
+  const pls = Math.max(0, Math.sin(t*2.4*pulse))*0.018*pulse;
+  const tl = cl(tilt, 0.2, 0.95); let d = '';
+  for (let i=0;i<=pts;i++){ const a=(i/pts)*PI2;
+    const noise = organic(Math.cos(a),Math.sin(a),phase)*r*turb*0.06;
+    const wob = Math.sin(a*3+phase*1.7)*r*turb*0.04 + Math.cos(a*5-phase*0.9)*r*turb*0.025;
+    const rr = r*br*(1+pls)+wob+noise;
+    d += `${i===0?'M':'L'} ${sf(cx+Math.cos(a)*rr,cx).toFixed(2)} ${sf(cy+Math.sin(a)*rr*tl,cy).toFixed(2)} `; }
+  return d+'Z';
 };
-
-export interface BeingEnv {
-  light?: number; noise?: number; motion?: number;
-  listening?: boolean; camera?: boolean; userNear?: boolean;
-}
-
-export default function DigitalBeing({
-  presence, size = 360, isDark = true, env, maturity = 0.8,
-}: {
-  presence: PresenceState;
-  size?: number;
-  isDark?: boolean;
-  env?: BeingEnv;
-  maturity?: number;
+export interface BeingEnv { light?: number; noise?: number; motion?: number; listening?: boolean; camera?: boolean; userNear?: boolean; }
+export default function DigitalBeing({ presence, size = 360, isDark = true, env, maturity = 0.8, userNear, awaken = 1 }: {
+  presence: PresenceState; size?: number; isDark?: boolean;
+  env?: { listening?: boolean; camera?: boolean; userNear?: boolean; light?: number; noise?: number; motion?: number };
+  maturity?: number; userNear?: boolean; awaken?: number;
 }) {
-  const cx = size / 2;
-  const cy = size / 2;
-  const R = size * 0.32;
-  const emo = emotionMap(presence?.emotion ?? 'calm');
-  const pal = EMOTION_PALETTES[emo];
+  const cx = size/2, cy = size/2, R = size*0.32;
+  const A = presence?.colorA ?? { r:155,g:111,b:255 };
+  const B = presence?.colorB ?? { r:70,g:139,b:255 };
+  const E = presence?.eyeColor ?? { r:232,g:222,b:255 };
   const t = useSharedValue(0);
   const energy = useSharedValue(cl(presence?.energy ?? 0.55));
-  const speed = useSharedValue(pal.orbitSpeed);
+  const speed = useSharedValue(cl(presence?.fieldSpeed ?? 0.4, 0.05, 2));
   const turb = useSharedValue(cl(presence?.turbulence ?? 0.18));
+  const tiltV = useSharedValue(cl(presence?.orbitality ?? 0.68, 0.2, 0.95));
+  const fieldR = useSharedValue(cl(presence?.fieldRadius ?? 1, 0.5, 1.6));
+  const fieldO = useSharedValue(cl(presence?.fieldOpacity ?? 0.85));
   const breath = useSharedValue(cl(presence?.breathing ?? 0.4));
   const pulse = useSharedValue(cl(presence?.pulse ?? 0.4));
   const eyeOpen = useSharedValue(cl(presence?.eyeOpenness ?? 0.85));
   const eyeGlow = useSharedValue(cl(presence?.eyeGlow ?? 0.88));
   const pupil = useSharedValue(cl(presence?.pupilSize ?? 0.42));
+  const blinkV = useSharedValue(cl(presence?.blink ?? 0));
   const gazeX = useSharedValue(cl(presence?.gazeX ?? 0, -1, 1));
   const gazeY = useSharedValue(cl(presence?.gazeY ?? 0, -1, 1));
   const warmth = useSharedValue(cl(presence?.warmth ?? 0.35));
   const attn = useSharedValue(cl(presence?.attention ?? 0.5));
   const anticipate = useSharedValue(cl(presence?.anticipation ?? 0.25));
-  const tiltV = useSharedValue(0.68);
-  const glowR = useSharedValue(cl(presence?.eyeGlow ?? 0.82));
-  useFrameCallback((f) => { t.value = sf(f.timeSinceFirstFrame, 0) / 1000; });
-  const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      cancelAnimation(t); cancelAnimation(energy);
-    };
-  }, []);
+  const voice = useSharedValue(cl(presence?.voiceLevel ?? 0));
+  useFrameCallback((f) => { t.value = sf(f.timeSinceFirstFrame, 0)/1000; });
+  useEffect(() => () => { cancelAnimation(t); cancelAnimation(energy); }, []);
   const DUR = { duration: 600, easing: Easing.out(Easing.cubic) };
-  const DUR_FAST = { duration: 220 };
+  const FAST = { duration: 220 };
   useEffect(() => {
     if (!presence) return;
-    const p = EMOTION_PALETTES[emotionMap(presence.emotion ?? 'calm')];
     energy.value = withTiming(cl(presence.energy ?? 0.55), DUR);
-    speed.value = withTiming(p.orbitSpeed * (presence.thinking ? 0.45 : presence.speaking ? 1.3 : 1), DUR);
-    turb.value = withTiming(cl(presence.turbulence ?? 0.18), DUR);
+    speed.value = withTiming(cl(presence.fieldSpeed ?? 0.4, 0.05, 2) * (presence.speaking ? 1.3 : presence.thinking ? 0.5 : 1), DUR);
+    turb.value = withTiming(cl((presence.turbulence ?? 0.18) + (env?.noise ?? 0)*0.2 + (env?.motion ?? 0)*0.12), DUR);
+    tiltV.value = withTiming(cl(presence.orbitality ?? 0.68, 0.2, 0.95), DUR);
+    fieldR.value = withTiming(cl((presence.fieldRadius ?? 1) + ((env?.userNear || userNear) ? 0.07 : 0) + maturity*0.03, 0.5, 1.7), DUR);
+    fieldO.value = withTiming(cl(presence.fieldOpacity ?? 0.85), DUR);
     breath.value = withTiming(cl(presence.breathing ?? 0.4), DUR);
     pulse.value = withTiming(cl(presence.pulse ?? 0.4), DUR);
-    eyeOpen.value = withTiming(cl(presence.eyeOpenness ?? 0.85) * (presence.emotion === 'sleepy' ? 0.3 : 1), DUR_FAST);
-    eyeGlow.value = withTiming(cl(presence.eyeGlow ?? 0.88), DUR_FAST);
-    pupil.value = withTiming(cl(presence.pupilSize ?? 0.42) + (presence.emotion === 'surprised' ? 0.25 : 0), DUR_FAST);
+    eyeOpen.value = withTiming(cl(presence.eyeOpenness ?? 0.85), FAST);
+    eyeGlow.value = withTiming(cl(presence.eyeGlow ?? 0.88), FAST);
+    pupil.value = withTiming(cl((presence.pupilSize ?? 0.42) + (1-(env?.light ?? 0.5))*0.2), FAST);
+    blinkV.value = withTiming(cl(presence.blink ?? 0), { duration: 120 });
     gazeX.value = withTiming(cl(presence.gazeX ?? 0, -1, 1), { duration: 280 });
     gazeY.value = withTiming(cl(presence.gazeY ?? 0, -1, 1), { duration: 280 });
+    if (env?.camera) { gazeX.value = withTiming(0, { duration: 400 }); gazeY.value = withTiming(0, { duration: 400 }); }
     warmth.value = withTiming(cl(presence.warmth ?? 0.35), DUR);
-    attn.value = withTiming(cl(presence.attention ?? 0.5) + (env?.userNear ? 0.2 : 0), DUR);
+    attn.value = withTiming(cl(presence.attention ?? 0.5) + ((env?.userNear || presence.userPresent) ? 0.15 : 0), DUR);
     anticipate.value = withTiming(cl(presence.anticipation ?? 0.25), DUR);
-    tiltV.value = withTiming(
-      presence.emotion === 'angry' ? 0.82 :
-      presence.emotion === 'surprised' ? 0.9 :
-      presence.emotion === 'sleepy' ? 0.45 :
-      presence.emotion === 'happy' ? 0.78 : 0.68, DUR);
-    glowR.value = withTiming(cl(presence.eyeGlow ?? 0.82), DUR_FAST);
+    voice.value = withTiming(cl(presence.voiceLevel ?? 0), FAST);
   }, [presence, env]);
+  const awakenV = useSharedValue(cl(awaken));
+  useEffect(() => { awakenV.value = withTiming(cl(awaken), { duration: 900, easing: Easing.out(Easing.cubic) }); }, [awaken]);
 
-  const mem1 = useDerivedValue(() => buildMembranePath(cx,cy,R*0.88, sf(t.value),cl(speed.value),cl(turb.value),cl(breath.value),cl(pulse.value),cl(tiltV.value),0));
-  const mem2 = useDerivedValue(() => buildMembranePath(cx,cy,R*1.02, sf(t.value),cl(speed.value)*0.87,cl(turb.value),cl(breath.value),cl(pulse.value),cl(tiltV.value)*0.94,1));
-  const mem3 = useDerivedValue(() => buildMembranePath(cx,cy,R*1.17, sf(t.value),cl(speed.value)*0.74,cl(turb.value)*0.88,cl(breath.value),cl(pulse.value),cl(tiltV.value)*0.88,2));
-  const mem4 = useDerivedValue(() => buildMembranePath(cx,cy,R*1.33, sf(t.value),cl(speed.value)*0.62,cl(turb.value)*0.76,cl(breath.value),cl(pulse.value),cl(tiltV.value)*0.82,3));
-  const mem5 = useDerivedValue(() => buildMembranePath(cx,cy,R*1.49, sf(t.value),cl(speed.value)*0.51,cl(turb.value)*0.64,cl(breath.value),cl(pulse.value),cl(tiltV.value)*0.76,4));
-  const mem6 = useDerivedValue(() => buildMembranePath(cx,cy,R*1.65, sf(t.value),cl(speed.value)*0.41,cl(turb.value)*0.52,cl(breath.value),cl(pulse.value),cl(tiltV.value)*0.70,5));
-  const mem7 = useDerivedValue(() => buildMembranePath(cx,cy,R*1.82, sf(t.value),cl(speed.value)*0.32,cl(turb.value)*0.4,cl(breath.value),cl(pulse.value),cl(tiltV.value)*0.64,6));
-
-  const coreR = useDerivedValue(() => {
-    const tv = sf(t.value); const bv = cl(breath.value); const pv = cl(pulse.value); const ev = cl(energy.value);
-    return sf(R * 0.52 * (1 + Math.sin(tv * 0.65 * (1+bv)) * 0.04 * bv + Math.max(0, Math.sin(tv * 2.8 * (1+pv))) * 0.035 * pv + ev * 0.06), R * 0.52);
-  });
-  const haloR = useDerivedValue(() => sf(coreR.value * (1.22 + cl(energy.value)*0.18 + cl(attn.value)*0.1), R*0.65));
-  const voiceR = useDerivedValue(() => { const tv = sf(t.value); const vv = cl(presence?.voiceLevel ?? 0); return sf(R * (1.55 + vv*0.3 + Math.sin(tv*1.4)*0.025), R*1.55); });
-  const listenR = useDerivedValue(() => { const tv = sf(t.value); const lst = (env?.listening || presence?.listening) ? 1 : 0; return sf(R * (1.38 + lst*0.12 + Math.sin(tv*0.9)*0.02), R*1.38); });
-  const masterOpacity = useDerivedValue(() => cl(0.55 + cl(energy.value)*0.38 + cl(warmth.value)*0.08));
-
-  const eyeSize = R * 0.16; const eyeSpacing = R * 0.38;
+  const mem1 = useDerivedValue(() => buildMembranePath(cx,cy,R*0.88*fieldR.value, sf(t.value), speed.value, turb.value, breath.value, pulse.value, tiltV.value, 0));
+  const mem2 = useDerivedValue(() => buildMembranePath(cx,cy,R*1.02*fieldR.value, sf(t.value), speed.value*0.87, turb.value, breath.value, pulse.value, tiltV.value*0.94, 1));
+  const mem3 = useDerivedValue(() => buildMembranePath(cx,cy,R*1.17*fieldR.value, sf(t.value), speed.value*0.74, turb.value*0.88, breath.value, pulse.value, tiltV.value*0.88, 2));
+  const mem4 = useDerivedValue(() => buildMembranePath(cx,cy,R*1.33*fieldR.value, sf(t.value), speed.value*0.62, turb.value*0.76, breath.value, pulse.value, tiltV.value*0.82, 3));
+  const mem5 = useDerivedValue(() => buildMembranePath(cx,cy,R*1.49*fieldR.value, sf(t.value), speed.value*0.51, turb.value*0.64, breath.value, pulse.value, tiltV.value*0.76, 4));
+  const mem6 = useDerivedValue(() => buildMembranePath(cx,cy,R*1.65*fieldR.value, sf(t.value), speed.value*0.41, turb.value*0.52, breath.value, pulse.value, tiltV.value*0.70, 5));
+  const mem7 = useDerivedValue(() => buildMembranePath(cx,cy,R*1.82*fieldR.value, sf(t.value), speed.value*0.32, turb.value*0.4, breath.value, pulse.value, tiltV.value*0.64, 6));
+  const coreR = useDerivedValue(() => sf(R*0.52*(1+Math.sin(sf(t.value)*0.65*(1+breath.value))*0.04*breath.value+Math.max(0,Math.sin(sf(t.value)*2.8*(1+pulse.value)))*0.035*pulse.value+energy.value*0.06), R*0.52));
+  const voiceR = useDerivedValue(() => sf(R*(1.55+voice.value*0.3+Math.sin(sf(t.value)*1.4)*0.025), R*1.55));
+  const listenR = useDerivedValue(() => sf(R*(1.38+((env?.listening||presence?.listening)?0.12:0)+Math.sin(sf(t.value)*0.9)*0.02), R*1.38));
+  const masterO = useDerivedValue(() => cl(0.55+energy.value*0.38+warmth.value*0.08)*fieldO.value*awakenV.value);
+  const eyeSize = R*0.16;
+  const sep = useSharedValue(presence?.eyeSeparation ?? R*0.38);
   const buildEye = (side: number) => useDerivedValue(() => {
     'worklet';
-    const tv = sf(t.value);
-    const blink = Math.max(Math.pow(Math.max(0, Math.sin(tv*0.71+side*1.7)), 36), Math.pow(Math.max(0, Math.sin(tv*0.38+side*4.3)), 52)*0.7);
-    const open = cl(eyeOpen.value) * (1 - cl(blink*0.97));
-    const thinking_squint = presence?.thinking ? 0.72 : 1;
-    const final_open = open * thinking_squint;
-    const baseCX = cx + side * eyeSpacing; const baseCY = cy - R*0.04;
-    const gx = sf(gazeX.value * R*0.06, 0); const gy = sf(gazeY.value * R*0.04, 0);
-    const ecx = baseCX + gx; const ecy = baseCY + gy;
-    const W = eyeSize * 1.1; const H = Math.max(eyeSize*0.06, eyeSize * 0.62 * final_open);
-    const lx = ecx - W; const rx = ecx + W; const top = ecy - H; const bot = ecy + H * 0.85;
-    const cp1x = ecx - W*0.3; const cp2x = ecx + W*0.3;
-    return `M ${lx} ${ecy} C ${cp1x} ${top}, ${cp2x} ${top}, ${rx} ${ecy} C ${cp2x} ${bot}, ${cp1x} ${bot}, ${lx} ${ecy} Z`;
+    const open = cl(eyeOpen.value) * (1 - cl(blinkV.value)*0.97);
+    const squint = presence?.thinking ? 0.72 : 1;
+    const H = Math.max(eyeSize*0.06, eyeSize*0.62*open*squint);
+    const ecx = cx + side*sep.value + sf(gazeX.value*R*0.06,0);
+    const ecy = cy - R*0.04 + sf(gazeY.value*R*0.04,0);
+    const W = eyeSize*1.1; const top = ecy-H; const bot = ecy+H*0.85;
+    const c1 = ecx-W*0.3, c2 = ecx+W*0.3;
+    return `M ${ecx-W} ${ecy} C ${c1} ${top}, ${c2} ${top}, ${ecx+W} ${ecy} C ${c2} ${bot}, ${c1} ${bot}, ${ecx-W} ${ecy} Z`;
   });
-  const leftEyePath = buildEye(-1); const rightEyePath = buildEye(1);
-  const leftPupilX = useDerivedValue(() => sf(cx - eyeSpacing + cl(gazeX.value,-1,1)*R*0.055, cx - eyeSpacing));
-  const rightPupilX = useDerivedValue(() => sf(cx + eyeSpacing + cl(gazeX.value,-1,1)*R*0.055, cx + eyeSpacing));
-  const pupilY = useDerivedValue(() => sf(cy - R*0.04 + cl(gazeY.value,-1,1)*R*0.038, cy - R*0.04));
-  const pupilR = useDerivedValue(() => sf(eyeSize * (0.28 + cl(pupil.value)*0.28), eyeSize*0.28));
+  const leftEye = buildEye(-1); const rightEye = buildEye(1);
+  const lPX = useDerivedValue(() => sf(cx-sep.value+gazeX.value*R*0.055, cx-sep.value));
+  const rPX = useDerivedValue(() => sf(cx+sep.value+gazeX.value*R*0.055, cx+sep.value));
+  const pY = useDerivedValue(() => sf(cy-R*0.04+gazeY.value*R*0.038, cy-R*0.04));
+  const pR = useDerivedValue(() => sf(eyeSize*(0.28+pupil.value*0.28), eyeSize*0.28));
   const buildBrow = (side: number) => useDerivedValue(() => {
     'worklet';
-    const tv = sf(t.value);
-    const gx = cl(gazeX.value,-1,1)*R*0.04; const gy = cl(gazeY.value,-1,1)*R*0.03;
-    const baseCX = cx + side*eyeSpacing + gx; const baseY = cy - R*0.22 + gy;
-    const angry_tilt = presence?.emotion==='angry' ? side*R*0.06 : 0;
-    const sad_tilt = presence?.emotion==='sad' ? -side*R*0.04 : 0;
-    const surprised_raise = presence?.emotion==='surprised' ? -R*0.04 : 0;
-    const tilt = angry_tilt + sad_tilt; const raise = surprised_raise; const W = eyeSize*0.9;
-    return `M ${baseCX-W} ${baseY+tilt+raise} Q ${baseCX} ${baseY-R*0.025+raise} ${baseCX+W} ${baseY-tilt+raise}`;
+    const em = presence?.emotion ?? 'calm';
+    const baseX = cx+side*sep.value+cl(gazeX.value,-1,1)*R*0.04;
+    const baseY = cy-R*0.22+cl(gazeY.value,-1,1)*R*0.03;
+    const tilt = (em==='angry'?side*R*0.06:0)+(em==='sad'?-side*R*0.04:0);
+    const raise = em==='surprised'?-R*0.04:0; const W = eyeSize*0.9;
+    return `M ${baseX-W} ${baseY+tilt+raise} Q ${baseX} ${baseY-R*0.025+raise} ${baseX+W} ${baseY-tilt+raise}`;
   });
   const leftBrow = buildBrow(-1); const rightBrow = buildBrow(1);
-  const eyeOpacity = useDerivedValue(() => cl(0.72 + cl(eyeGlow.value)*0.26));
+  const eyeO = useDerivedValue(() => cl(0.72+eyeGlow.value*0.26)*cl(0.15+awakenV.value*0.85));
   const particlePath = useDerivedValue(() => {
     'worklet';
-    const tv = sf(t.value); const ev = cl(energy.value); const sv = cl(speed.value); const av = cl(anticipate.value);
-    const count = Math.round(60 + ev*100 + av*40); const orbitR = R * (1.1 + ev*0.3); let d = '';
-    for (let i=0; i<count; i++) {
-      const seed = i * 13.271 + (i%7)*0.37;
-      const life = (tv*(0.04+(i%9)*0.006)+seed) % 1;
-      const fade = Math.sin(life*Math.PI);
-      if (fade < 0.05) continue;
-      const angle = seed*2.618 + tv*(0.015+(i%5)*0.007)*sv*(0.5+ev);
-      const r = orbitR * (0.85 + ((i*37)%100)/100*0.55) * (0.88+life*0.24);
-      const size = Math.max(0.3, (0.3+(((i*13)%10)/10)*(0.5+av))*fade*1.2);
-      const px = sf(cx + Math.cos(angle)*r, cx);
-      const py = sf(cy + Math.sin(angle)*r*(cl(tiltV.value)*0.85+0.15), cy);
-      const s = sf(size, 0.3);
-      d += `M ${px} ${py} l ${s} ${s*0.4} `;
-    }
-    return d || 'M 0 0';
+    const tv = sf(t.value); const ev = cl(energy.value); const av = cl(anticipate.value);
+    const count = Math.round(60+ev*100+av*40); const orbitR = R*(1.1+ev*0.3); let d='';
+    for (let i=0;i<count;i++){ const seed=i*13.271+(i%7)*0.37;
+      const life=(tv*(0.04+(i%9)*0.006)+seed)%1; const fade=Math.sin(life*Math.PI);
+      if (fade<0.05) continue;
+      const angle=seed*2.618+tv*(0.015+(i%5)*0.007)*speed.value*(0.5+ev);
+      const r=orbitR*(0.85+((i*37)%100)/100*0.55)*(0.88+life*0.24);
+      const s=Math.max(0.3,(0.3+(((i*13)%10)/10)*(0.5+av))*fade*1.2);
+      d+=`M ${sf(cx+Math.cos(angle)*r,cx).toFixed(1)} ${sf(cy+Math.sin(angle)*r*(tiltV.value*0.85+0.15),cy).toFixed(1)} l ${s.toFixed(1)} ${(s*0.4).toFixed(1)} `; }
+    return d||'M 0 0';
   });
-
-  const lightMul = isDark ? 1 : 0.78;
-  const adjA = pal.coreA.map(c=>Math.round(c*lightMul)) as number[];
-  const adjB = pal.coreB.map(c=>Math.round(c*lightMul)) as number[];
-  const adjAuraA = pal.auraA.map(c=>Math.round(c*lightMul)) as number[];
-  const adjAuraB = pal.auraB.map(c=>Math.round(c*lightMul)) as number[];
+  const mul = isDark ? 1 : 0.78;
   const C = {
-    core0: rgb(adjA, isDark?0.95:0.82), core1: rgb(adjB, isDark?0.55:0.42), core2: rgb(adjA, 0),
-    halo0: rgb(adjAuraA, isDark?0.42:0.32), halo1: rgb(adjAuraB, isDark?0.22:0.16), halo2: rgb(adjA, 0),
-    mem1c: rgb(adjB, isDark?0.72:0.56), mem2c: rgb(adjA, isDark?0.58:0.44), mem3c: rgb(adjB, isDark?0.48:0.36),
-    mem4c: rgb(adjA, isDark?0.38:0.28), mem5c: rgb(adjB, isDark?0.30:0.22), mem6c: rgb(adjA, isDark?0.22:0.16),
-    mem7c: rgb(adjB, isDark?0.16:0.11), sweep0: rgb(adjB, isDark?0.28:0.18), sweep1: rgb(adjA, isDark?0.28:0.18),
-    particle: rgb(adjB, isDark?0.42:0.28), eyeFill: rgb(pal.coreA, isDark?0.95:0.88),
-    eyeStroke: rgb(adjB, isDark?0.88:0.72), pupilFill: isDark?'#FFFFFF':'#F0EEFF',
-    brow: rgb(pal.coreA, isDark?0.55:0.42), voice: rgb(adjB, isDark?0.35:0.22),
-    listen: rgb(adjA, isDark?0.28:0.18), outer: rgb(adjA, isDark?0.14:0.09),
+    core0: rgba(A, isDark?0.95:0.82, mul), core1: rgba(B, isDark?0.55:0.42, mul), core2: rgba(A, 0, mul),
+    halo0: rgba(A, isDark?0.42:0.32, mul), halo1: rgba(B, isDark?0.22:0.16, mul), halo2: rgba(A, 0, mul),
+    m1: rgba(B, isDark?0.72:0.56, mul), m2: rgba(A, isDark?0.58:0.44, mul), m3: rgba(B, isDark?0.48:0.36, mul),
+    m4: rgba(A, isDark?0.38:0.28, mul), m5: rgba(B, isDark?0.30:0.22, mul), m6: rgba(A, isDark?0.22:0.16, mul), m7: rgba(B, isDark?0.16:0.11, mul),
+    sweep0: rgba(B, isDark?0.28:0.18, mul), sweep1: rgba(A, isDark?0.28:0.18, mul),
+    particle: rgba(B, isDark?0.42:0.28, mul),
+    eyeFill: rgba(E, isDark?0.95:0.88, mul), eyeStroke: rgba(B, isDark?0.88:0.72, mul),
+    pupilFill: isDark?'#FFFFFF':'#F0EEFF', brow: rgba(A, isDark?0.55:0.42, mul),
+    voiceC: rgba(B, isDark?0.35:0.22, mul), listenC: rgba(A, isDark?0.28:0.18, mul), outer: rgba(A, isDark?0.14:0.09, mul),
   };
-
   return (
     <View accessible accessibilityLabel={`MyTwin: ${presence?.emotion ?? 'calm'}`} style={[styles.wrap, {width:size, height:size}]}>
       <Canvas style={StyleSheet.absoluteFill}>
-        <Circle cx={cx} cy={cy} r={R*2.1} opacity={useDerivedValue(()=>cl(0.12+cl(energy.value)*0.1))}>
+        <Circle cx={cx} cy={cy} r={R*2.1} opacity={useDerivedValue(()=>cl(0.12+energy.value*0.1))}>
           <RadialGradient c={vec(cx,cy)} r={R*2.1} colors={[C.halo0, C.halo1, C.halo2]} />
         </Circle>
-        <Path path={mem7} style="stroke" strokeWidth={0.55} color={C.mem7c} opacity={useDerivedValue(()=>cl(0.14+cl(energy.value)*0.1)*masterOpacity.value)} />
-        <Path path={mem6} style="stroke" strokeWidth={0.65} color={C.mem6c} opacity={useDerivedValue(()=>cl(0.18+cl(energy.value)*0.12)*masterOpacity.value)} />
-        <Path path={mem5} style="stroke" strokeWidth={0.8}  color={C.mem5c} opacity={useDerivedValue(()=>cl(0.24+cl(energy.value)*0.14)*masterOpacity.value)} />
-        <Path path={mem4} style="stroke" strokeWidth={1.0}  color={C.mem4c} opacity={useDerivedValue(()=>cl(0.30+cl(energy.value)*0.16)*masterOpacity.value)} />
-        <Path path={mem3} style="stroke" strokeWidth={1.2}  color={C.mem3c} opacity={useDerivedValue(()=>cl(0.38+cl(energy.value)*0.18)*masterOpacity.value)} />
-        <Path path={mem2} style="stroke" strokeWidth={1.45} color={C.mem2c} opacity={useDerivedValue(()=>cl(0.48+cl(energy.value)*0.20)*masterOpacity.value)} />
-        <Path path={mem1} style="stroke" strokeWidth={1.7}  color={C.mem1c} opacity={useDerivedValue(()=>cl(0.60+cl(energy.value)*0.22)*masterOpacity.value)} />
-        <Circle cx={cx} cy={cy} r={R*1.45} style="stroke" strokeWidth={1.1} opacity={useDerivedValue(()=>cl(cl(attn.value)*0.18+cl(anticipate.value)*0.12))}>
+        <Path path={mem7} style="stroke" strokeWidth={0.55} color={C.m7} opacity={useDerivedValue(()=>cl(0.14+energy.value*0.1)*masterO.value)} />
+        <Path path={mem6} style="stroke" strokeWidth={0.65} color={C.m6} opacity={useDerivedValue(()=>cl(0.18+energy.value*0.12)*masterO.value)} />
+        <Path path={mem5} style="stroke" strokeWidth={0.8} color={C.m5} opacity={useDerivedValue(()=>cl(0.24+energy.value*0.14)*masterO.value)} />
+        <Path path={mem4} style="stroke" strokeWidth={1.0} color={C.m4} opacity={useDerivedValue(()=>cl(0.30+energy.value*0.16)*masterO.value)} />
+        <Path path={mem3} style="stroke" strokeWidth={1.2} color={C.m3} opacity={useDerivedValue(()=>cl(0.38+energy.value*0.18)*masterO.value)} />
+        <Path path={mem2} style="stroke" strokeWidth={1.45} color={C.m2} opacity={useDerivedValue(()=>cl(0.48+energy.value*0.20)*masterO.value)} />
+        <Path path={mem1} style="stroke" strokeWidth={1.7} color={C.m1} opacity={useDerivedValue(()=>cl(0.60+energy.value*0.22)*masterO.value)} />
+        <Circle cx={cx} cy={cy} r={R*1.45} style="stroke" strokeWidth={1.1} opacity={useDerivedValue(()=>cl(attn.value*0.18+anticipate.value*0.12))}>
           <SweepGradient c={vec(cx,cy)} colors={[C.sweep0,'#FFFFFF08',C.sweep1,'#FFFFFF08',C.sweep0]} />
         </Circle>
-        <Circle cx={cx} cy={cy} r={listenR} style="stroke" strokeWidth={0.7} color={C.listen} opacity={useDerivedValue(()=>cl((env?.listening||presence?.listening)?0.32:0.05))} />
-        <Circle cx={cx} cy={cy} r={voiceR} style="stroke" strokeWidth={0.75} color={C.voice} opacity={useDerivedValue(()=>cl(0.04+cl(presence?.voiceLevel??0)*0.38))} />
+        <Circle cx={cx} cy={cy} r={listenR} style="stroke" strokeWidth={0.7} color={C.listenC} opacity={useDerivedValue(()=>cl((env?.listening||presence?.listening)?0.32:0.05))} />
+        <Circle cx={cx} cy={cy} r={voiceR} style="stroke" strokeWidth={0.75} color={C.voiceC} opacity={useDerivedValue(()=>cl(0.04+voice.value*0.38))} />
         <Circle cx={cx} cy={cy} r={R*2.05} style="stroke" strokeWidth={0.5} color={C.outer} opacity={0.9} />
-        <Circle cx={cx} cy={cy} r={R*1.08} opacity={useDerivedValue(()=>cl(0.18+cl(warmth.value)*0.22+cl(attn.value)*0.12))}>
+        <Circle cx={cx} cy={cy} r={R*1.08} opacity={useDerivedValue(()=>cl(0.18+warmth.value*0.22+attn.value*0.12))}>
           <RadialGradient c={vec(cx,cy)} r={R*1.08} colors={[C.halo0, C.halo1, C.halo2]} />
         </Circle>
-        <Circle cx={cx} cy={cy} r={coreR} opacity={useDerivedValue(()=>cl(0.78+cl(energy.value)*0.18))}>
+        <Circle cx={cx} cy={cy} r={coreR} opacity={useDerivedValue(()=>cl(0.78+energy.value*0.18))}>
           <RadialGradient c={vec(cx,cy)} r={R*0.72} colors={[C.core0, C.core1, C.core2]} />
         </Circle>
-        <Circle cx={cx} cy={cy} r={useDerivedValue(()=>sf(coreR.value*0.55,R*0.28))} opacity={useDerivedValue(()=>cl(0.55+cl(energy.value)*0.35+cl(warmth.value)*0.1))}>
+        <Circle cx={cx} cy={cy} r={useDerivedValue(()=>sf(coreR.value*0.55,R*0.28))} opacity={useDerivedValue(()=>cl(0.55+energy.value*0.35+warmth.value*0.1))}>
           <RadialGradient c={vec(cx,cy)} r={R*0.35} colors={[isDark?'#FFFFFF55':'#FFFFFF40', C.core0, C.core2]} />
         </Circle>
-        <Path path={particlePath} style="stroke" strokeWidth={1.1} strokeCap="round" color={C.particle} opacity={useDerivedValue(()=>cl(isDark?0.42:0.28+cl(energy.value)*0.15))} />
-        <Path path={leftEyePath}  color={C.eyeFill}   opacity={eyeOpacity} />
-        <Path path={rightEyePath} color={C.eyeFill}   opacity={eyeOpacity} />
-        <Path path={leftEyePath}  style="stroke" strokeWidth={1.1} color={C.eyeStroke} opacity={useDerivedValue(()=>cl(0.88*eyeOpacity.value))} />
-        <Path path={rightEyePath} style="stroke" strokeWidth={1.1} color={C.eyeStroke} opacity={useDerivedValue(()=>cl(0.88*eyeOpacity.value))} />
-        <Path path={leftBrow}  style="stroke" strokeWidth={1.3} strokeCap="round" color={C.brow} opacity={useDerivedValue(()=>cl(0.52*eyeOpacity.value))} />
-        <Path path={rightBrow} style="stroke" strokeWidth={1.3} strokeCap="round" color={C.brow} opacity={useDerivedValue(()=>cl(0.52*eyeOpacity.value))} />
-        <Circle cx={leftPupilX}  cy={pupilY} r={pupilR} color={C.pupilFill} opacity={eyeOpacity} />
-        <Circle cx={rightPupilX} cy={pupilY} r={pupilR} color={C.pupilFill} opacity={eyeOpacity} />
-        <Circle cx={useDerivedValue(()=>sf(leftPupilX.value-pupilR.value*0.28,cx-eyeSpacing))} cy={useDerivedValue(()=>sf(pupilY.value-pupilR.value*0.28,cy))} r={useDerivedValue(()=>sf(pupilR.value*0.32,eyeSize*0.09))} color="#FFFFFF" opacity={useDerivedValue(()=>isDark?0.95:0.82)} />
-        <Circle cx={useDerivedValue(()=>sf(rightPupilX.value-pupilR.value*0.28,cx+eyeSpacing))} cy={useDerivedValue(()=>sf(pupilY.value-pupilR.value*0.28,cy))} r={useDerivedValue(()=>sf(pupilR.value*0.32,eyeSize*0.09))} color="#FFFFFF" opacity={useDerivedValue(()=>isDark?0.95:0.82)} />
-        <Circle cx={leftPupilX}  cy={pupilY} r={useDerivedValue(()=>sf(pupilR.value*1.8,eyeSize*0.5))} opacity={useDerivedValue(()=>cl(cl(eyeGlow.value)*0.35))}>
-          <RadialGradient c={vec(cx-eyeSpacing, cy-R*0.04)} r={eyeSize*1.2} colors={[C.eyeStroke, C.eyeFill, C.halo2]} />
+        <Path path={particlePath} style="stroke" strokeWidth={1.1} strokeCap="round" color={C.particle} opacity={useDerivedValue(()=>cl(isDark?0.42:0.28+energy.value*0.15))} />
+        <Path path={leftEye} color={C.eyeFill} opacity={eyeO} />
+        <Path path={rightEye} color={C.eyeFill} opacity={eyeO} />
+        <Path path={leftEye} style="stroke" strokeWidth={1.1} color={C.eyeStroke} opacity={useDerivedValue(()=>cl(0.88*eyeO.value))} />
+        <Path path={rightEye} style="stroke" strokeWidth={1.1} color={C.eyeStroke} opacity={useDerivedValue(()=>cl(0.88*eyeO.value))} />
+        <Path path={leftBrow} style="stroke" strokeWidth={1.3} strokeCap="round" color={C.brow} opacity={useDerivedValue(()=>cl(0.52*eyeO.value))} />
+        <Path path={rightBrow} style="stroke" strokeWidth={1.3} strokeCap="round" color={C.brow} opacity={useDerivedValue(()=>cl(0.52*eyeO.value))} />
+        <Circle cx={lPX} cy={pY} r={pR} color={C.pupilFill} opacity={eyeO} />
+        <Circle cx={rPX} cy={pY} r={pR} color={C.pupilFill} opacity={eyeO} />
+        <Circle cx={useDerivedValue(()=>sf(lPX.value-pR.value*0.28,cx-sep.value))} cy={useDerivedValue(()=>sf(pY.value-pR.value*0.28,cy))} r={useDerivedValue(()=>sf(pR.value*0.32,eyeSize*0.09))} color="#FFFFFF" opacity={useDerivedValue(()=>isDark?0.95:0.82)} />
+        <Circle cx={useDerivedValue(()=>sf(rPX.value-pR.value*0.28,cx+sep.value))} cy={useDerivedValue(()=>sf(pY.value-pR.value*0.28,cy))} r={useDerivedValue(()=>sf(pR.value*0.32,eyeSize*0.09))} color="#FFFFFF" opacity={useDerivedValue(()=>isDark?0.95:0.82)} />
+        <Circle cx={lPX} cy={pY} r={useDerivedValue(()=>sf(pR.value*1.8,eyeSize*0.5))} opacity={useDerivedValue(()=>cl(eyeGlow.value*0.35))}>
+          <RadialGradient c={vec(cx-sep.value, cy-R*0.04)} r={eyeSize*1.2} colors={[C.eyeStroke, C.eyeFill, C.halo2]} />
         </Circle>
-        <Circle cx={rightPupilX} cy={pupilY} r={useDerivedValue(()=>sf(pupilR.value*1.8,eyeSize*0.5))} opacity={useDerivedValue(()=>cl(cl(eyeGlow.value)*0.35))}>
-          <RadialGradient c={vec(cx+eyeSpacing, cy-R*0.04)} r={eyeSize*1.2} colors={[C.eyeStroke, C.eyeFill, C.halo2]} />
+        <Circle cx={rPX} cy={pY} r={useDerivedValue(()=>sf(pR.value*1.8,eyeSize*0.5))} opacity={useDerivedValue(()=>cl(eyeGlow.value*0.35))}>
+          <RadialGradient c={vec(cx+sep.value, cy-R*0.04)} r={eyeSize*1.2} colors={[C.eyeStroke, C.eyeFill, C.halo2]} />
         </Circle>
       </Canvas>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { alignItems:'center', justifyContent:'center', overflow:'visible' },
-});
+const styles = StyleSheet.create({ wrap: { alignItems:'center', justifyContent:'center', overflow:'visible' } });

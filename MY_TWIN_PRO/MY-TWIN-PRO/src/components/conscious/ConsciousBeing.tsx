@@ -1,50 +1,40 @@
 import React, { useEffect, useState } from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { presenceBridge, presenceEngine } from '../../core/PresenceBridge';
-import { stateBus } from '../../core/StateBus';
-import { apiGet } from '../../../lib/httpClient';
-import { useAppTheme } from '../../../engine/colors';
+import { useColorScheme } from 'react-native';
+import DigitalBeing from './DigitalBeing';
+import { presenceEngine } from '../../core/PresenceBridge';
+import { devicePresenceEngine } from '../../../engine/device/DevicePresenceEngine';
 import { useTwinStore } from '../../../store/useTwinStore';
 import type { PresenceState } from '../../../engine/presence/PresenceTypes';
-import DigitalBeing, { } from './DigitalBeing';
-import type { BeingEnv } from './BeingEnv';
-export default function ConsciousBeing({ size = 360, style }: { size?: number; style?: StyleProp<ViewStyle> }) {
-  const { isDark } = useAppTheme();
-  const userId = useTwinStore(s => s.userId) || '';
+/** ConsciousBeing v2 — الموصِّل الحي: يشغّل المحرك، يشترك فيه، يبني env، ويوقظ الكيان تدريجيًا. */
+export default function ConsciousBeing({ size = 300 }: { size?: number }) {
+  const scheme = useColorScheme();
   const [presence, setPresence] = useState<PresenceState>(() => presenceEngine.getSnapshot());
-  const [env, setEnv] = useState<BeingEnv>({ light: 0.5, noise: 0.3, motion: 0, camera: false, userNear: false, listening: false });
-  const [maturity, setMaturity] = useState(0.35);
+  const [env, setEnv] = useState<any>({ light: 0.5, noise: 0, motion: 0, userNear: false, camera: false, listening: false });
+  const [awaken, setAwaken] = useState(0);
+  const bond = Number((useTwinStore((s: any) => s.bondLevel ?? s.bond ?? 20) as any) ?? 20);
   useEffect(() => {
-    presenceBridge.start();
-    const unsub = presenceEngine.subscribe((next) => setPresence(next));
+    presenceEngine.start();
+    const un = presenceEngine.subscribe(setPresence);
     const iv = setInterval(() => {
-      const s = stateBus.getState();
-      setEnv({ light: (s as any).ambientLight ?? 0.5, noise: (s as any).voiceLevel ?? 0.3, motion: (s as any).movement ?? 0, camera: false, userNear: ((s as any).proximity ?? 0) > 0.5, listening: !!(s as any).listening });
-    }, 600);
-    return () => { unsub(); clearInterval(iv); };
-  }, []);
-  // ✅ التطور المرئي من اقتصاد العلاقة الخلفي
-  useEffect(() => {
-    if (!userId) return;
-    let alive = true;
-    const load = async () => {
       try {
-        const d: any = await apiGet(`/api/twin/state?user_id=${userId}`);
-        if (alive && d) {
-          const bond = Number(d.bond_depth ?? 0.1);
-          const harmony = Number(d?.soul_state?.resonance?.harmony ?? 0.2);
-          setMaturity(Math.max(0.15, Math.min(1, 0.25 + bond * 0.6 + harmony * 0.4)));
-        }
+        const s: any = devicePresenceEngine.getSensors();
+        setEnv({ light: s.lightLevel ?? 0.5, noise: s.audioLevel ?? 0, motion: s.userWalking ? 0.5 : (s.movement ?? 0), userNear: !!s.faceDetected, camera: false, listening: false });
       } catch {}
-    };
-    load();
-    const iv = setInterval(load, 60000);
-    return () => { alive = false; clearInterval(iv); };
-  }, [userId]);
+    }, 700);
+    let a = 0;
+    const aw = setInterval(() => { a = Math.min(1, a + 0.04); setAwaken(a); if (a >= 1) clearInterval(aw); }, 70);
+    return () => { un(); clearInterval(iv); clearInterval(aw); };
+  }, []);
+  const maturity = Math.max(0.2, Math.min(1, bond / 100));
   return (
-    <View pointerEvents="none" style={[styles.container, { width: size, height: size }, style]}>
-      <DigitalBeing presence={presence} size={size} isDark={isDark} env={env} maturity={maturity} />
-    </View>
+    <DigitalBeing
+      presence={presence}
+      size={size}
+      isDark={scheme !== 'light'}
+      env={env}
+      maturity={maturity}
+      userNear={env?.userNear}
+      awaken={awaken}
+    />
   );
 }
-const styles = StyleSheet.create({ container: { alignItems: 'center', justifyContent: 'center', overflow: 'visible' } });
