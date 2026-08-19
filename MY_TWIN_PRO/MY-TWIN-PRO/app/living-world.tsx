@@ -7,6 +7,7 @@ import { apiPost, apiGet } from '../lib/httpClient';
 import { useTwinBrain } from '../src/hooks/useTwinBrain';
 import { track, initAnalytics } from '../lib/analytics';
 import { useRTL } from '../lib/useRTL';
+import { useRouter } from 'expo-router';
 import { useAppTheme } from '../engine/colors';
 import { useTwinStore } from '../store/useTwinStore';
 import { bootstrapCoordinator } from '../src/core/BootstrapCoordinator';
@@ -54,7 +55,7 @@ const buildPresencePatch = (r: any): any => {
 export default function LivingWorld() {
   const userId = useTwinStore(s => s.userId) || '';
   const { colors } = useAppTheme();
-  const rtl = useRTL(); const lang = rtl.isRTL ? 'ar' : 'en';
+  const rtl = useRTL(); const router = useRouter(); const lang = rtl.isRTL ? 'ar' : 'en';
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Array<{ id: string; sender: 'user' | 'twin'; text: string }>>([]);
   const [isListening, setIsListening] = useState(false);
@@ -66,6 +67,8 @@ export default function LivingWorld() {
   const [online, setOnline] = useState(true);
   const [diag, setDiag] = useState('');
   const [tele, setTele] = useState<{ n: number; hb: number | null } | null>(null);
+  const [gating, setGating] = useState<any>(null);
+  const msgCount = useRef(0);
   const wingT = useRef<any>(null); const scrollRef = useRef<ScrollView>(null);
   const brain = useTwinBrain(userId, lang);
   const voicePresence = useVoicePresence();
@@ -90,6 +93,18 @@ export default function LivingWorld() {
     if (!userId) return;
     (async () => { try { const d: any = await apiGet('/api/self/absence_summary'); if (d?.summary) setMessages(prev => (prev.length ? prev : [{ id: 'absence', sender: 'twin', text: d.summary }])); } catch {} })();
   }, [userId]);
+  const showInterstitial = useCallback(() => {
+    msgCount.current += 1;
+    if (msgCount.current % 6 !== 0) return;
+    try {
+      const g: any = require('react-native-google-mobile-ads');
+      const ad = g.InterstitialAd.createForAdRequest(g.TestIds.INTERSTITIAL, { requestNonPersonalizedAdsOnly: true });
+      const un = ad.addAdEventListener?.(g.AdEventType.LOADED, () => { try { ad.show(); } catch {} });
+      ad.load();
+      setTimeout(() => { try { un?.(); } catch {} }, 30000);
+    } catch {}
+  }, []);
+  useEffect(() => { (async () => { try { const o: any = await apiGet('/api/economy/overview'); setGating(o?.gating || null); } catch {} })(); }, [userId]);
   useEffect(() => {
     if (!userId) return;
     let ws: WebSocket | null = null; let alive = true; let retry: any = null;
@@ -129,7 +144,8 @@ export default function LivingWorld() {
     try {
       if (key === 'memory') { const d: any = await apiGet('/api/memories?user_id=' + userId); const arr = Array.isArray(d) ? d : (d?.memories || []); setWingData(arr.slice(0, 8).map((m: any) => ({ k: m.layer || m.type || 'ذكرى', v: String(m.content || m.text || '').slice(0, 60) }))); }
       else if (key === 'goals') { const d: any = await apiGet('/api/goals?user_id=' + userId); const arr = Array.isArray(d) ? d : (d?.goals || []); setWingData(arr.slice(0, 8).map((g: any) => ({ k: g.status || 'هدف', v: String(g.title || g.text || '').slice(0, 60) }))); }
-      else if (key === 'dreams') { const d: any = await apiGet('/api/dreams?user_id=' + userId); const arr = Array.isArray(d) ? d : (d?.dreams || []); setWingData(arr.slice(0, 8).map((x: any) => ({ k: x.kind || 'حلم', v: String(x.summary || x.text || '').slice(0, 60) }))); }
+      else if (key === 'dreams') {
+        if (gating && gating.dreams_enabled === false) { setWingData([{ k: 'مقفل 🔒', v: 'ترقية إلى Premium لفتح الأحلام' }]); return; } const d: any = await apiGet('/api/dreams?user_id=' + userId); const arr = Array.isArray(d) ? d : (d?.dreams || []); setWingData(arr.slice(0, 8).map((x: any) => ({ k: x.kind || 'حلم', v: String(x.summary || x.text || '').slice(0, 60) }))); }
       else if (key === 'perception') { const s: any = devicePresenceEngine.getSensors(); setWingData([{ k: 'الحركة', v: s.userWalking ? 'يمشي معك' : s.userStationary ? 'ساكن' : 'متحرك' }, { k: 'الإضاءة', v: String(s.lightLevel ?? '—') }, { k: 'البطارية', v: (s.deviceBattery ?? '—') + '%' }, { k: 'الوقت', v: s.isNightTime ? 'ليل' : 'نهار' }, { k: 'المكان', v: sharedPresence.place || 'غير معروف' }]); }
       else if (key === 'emotion') { const st = stateBus.getState(); setWingData([{ k: 'الشعور', v: st.emotionValence > 0.3 ? 'دافئ' : st.emotionValence < -0.3 ? 'متكدر' : 'هادئ' }, { k: 'الطاقة', v: Math.round(st.energy * 100) + '%' }, { k: 'الارتباط', v: Math.round(st.connection * 100) + '%' }, { k: 'الفضول', v: Math.round(st.curiosity * 100) + '%' }]); }
       else setWingData([{ k: 'الحدس', v: 'أتعلم من سياقاتك وستزداد حدسي مع كل حوار.' }]);
@@ -174,6 +190,7 @@ export default function LivingWorld() {
           setTimeout(() => stateBus.patch({ speaking: false, voiceLevel: 0 }), dur);
         }
       } catch {}
+      if (gating?.ads_in_chat) showInterstitial();
       track('message_sent', { emotion: newEmotion, lang });
     } catch (e: any) {
       setOnline(false); setDiag(String(e?.message || e).slice(0, 120));
@@ -260,7 +277,7 @@ export default function LivingWorld() {
         <TouchableOpacity onPress={toggleListening} style={[styles.voiceBtn, isListening && { backgroundColor: colors.accent + '22' }]}>
           {isListening ? <MicOff size={22} stroke={colors.accent} /> : <Mic size={22} stroke={colors.textSecondary} />}
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleVision} style={styles.voiceBtn}>
+        <TouchableOpacity onPress={() => { if (gating && gating.vision_enabled === false) { try { router.push('/paywall'); } catch {} } else handleVision(); }} style={styles.voiceBtn}>
           <Camera size={22} stroke={isVisioning ? colors.accent : colors.textSecondary} />
         </TouchableOpacity>
         <TextInput style={[styles.input, { textAlign: rtl.textAlign, color: colors.text }]} value={inputText} onChangeText={setInputText} onSubmitEditing={handleSend} editable={!isThinking} placeholder={rtl.isRTL ? 'اكتب رسالتك...' : 'Write your message...'} placeholderTextColor={colors.textSecondary} multiline />
