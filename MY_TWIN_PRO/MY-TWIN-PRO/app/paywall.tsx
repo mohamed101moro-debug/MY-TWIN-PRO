@@ -1,0 +1,85 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { apiGet, apiPost } from '../lib/httpClient';
+import { useAppTheme } from '../engine/colors';
+import { useRTL } from '../lib/useRTL';
+import { useRouter } from 'expo-router';
+let RewardedAd: any = null, RewardedEventType: any = null, TestIds: any = null;
+try { const g: any = require('react-native-google-mobile-ads'); RewardedAd = g.RewardedAd; RewardedEventType = g.RewardedEventType; TestIds = g.TestIds; } catch {}
+
+export default function Paywall() {
+  const { colors } = useAppTheme(); const rtl = useRTL(); const router = useRouter();
+  const [ov, setOv] = useState<any>(null); const [toast, setToast] = useState('');
+  const adRef = useRef<any>(null); const adReady = useRef(false);
+  const refresh = useCallback(async () => { try { setOv(await apiGet('/api/economy/overview')); } catch {} }, []);
+  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    if (!RewardedAd) return;
+    try {
+      const ad = RewardedAd.createForAdRequest(TestIds.REWARDED, { requestNonPersonalizedAdsOnly: true });
+      ad.addRewardedEventListener?.(RewardedEventType.LOADED, () => { adReady.current = true; });
+      ad.addRewardedEventListener?.(RewardedEventType.EARNED_REWARD, async () => { try { await apiPost('/api/economy/ad-reward', {}); setToast('+150 ✨'); refresh(); } catch {} });
+      ad.load(); adRef.current = ad;
+    } catch {}
+  }, []);
+  const watchAd = async () => {
+    if (adRef.current && adReady.current) { try { adRef.current.show(); return; } catch {} }
+    try { await apiPost('/api/economy/ad-reward', {}); setToast('+150 ✨'); refresh(); } catch (e: any) { setToast(String(e?.message || '').slice(0, 40)); }
+  };
+  const startTrial = async () => { try { await apiPost('/api/economy/trial/start', {}); setToast('🎉 3 أيام premium'); refresh(); } catch (e: any) { setToast(String(e?.message || '').slice(0, 40)); } };
+  return (
+    <View style={[styles.wrap, { backgroundColor: colors.bg }]}>
+      <View style={styles.head}>
+        <Text style={[styles.title, { color: colors.text }]}>{rtl.isRTL ? 'ارتقِ بعلاقتك مع توأمك' : 'Elevate your Twin relationship'}</Text>
+        <TouchableOpacity onPress={() => router.back()}><Text style={{ color: colors.accent, fontSize: 16 }}>✕</Text></TouchableOpacity>
+      </View>
+      {toast !== '' && <Text style={{ color: colors.gold, textAlign: 'center', marginBottom: 6 }}>{toast}</Text>}
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {(ov?.catalog || []).map((t: any) => {
+          const current = ov?.tier === t.tier;
+          const isYearly = t.tier === 'yearly';
+          return (
+            <View key={t.tier} style={[styles.card, { backgroundColor: colors.card, borderColor: current ? colors.accent : colors.border }]}>
+              <View style={styles.row}>
+                <View>
+                  <Text style={[styles.tier, { color: current ? colors.accent : colors.text }]}>{t.tier}{current ? ' ✓' : ''}</Text>
+                  <Text style={{ color: colors.gold, fontSize: 13, fontStyle: 'italic', marginTop: 2 }}>{t.philosophy}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ color: colors.gold, fontWeight: '700', fontSize: 16 }}>
+                    {t.price === 0 ? (rtl.isRTL ? 'مجاني' : 'Free') : `$${t.price}`}
+                  </Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 11 }}>
+                    {t.period === 'forever' ? '' : t.period === 'year' ? (rtl.isRTL ? '/سنة' : '/year') : t.period === '6months' ? (rtl.isRTL ? '/6 أشهر' : '/6mo') : (rtl.isRTL ? '/شهر' : '/mo')}
+                  </Text>
+                  {isYearly && <Text style={{ color: colors.success, fontSize: 11, marginTop: 2 }}>{rtl.isRTL ? `= $12.50/شهر (وفّر $29.89)` : `= $12.50/mo (save $29.89)`}</Text>}
+                </View>
+              </View>
+              {t.features.map((f: string, i: number) => <Text key={i} style={{ color: colors.textSecondary, fontSize: 12, marginVertical: 2 }}>• {f}</Text>)}
+            </View>
+          );
+        })}
+        <TouchableOpacity onPress={startTrial} style={[styles.btn, { backgroundColor: colors.accent }]}>
+          <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{rtl.isRTL ? '🎁 جرّب premium 3 أيام' : '🎁 Try premium 3 days'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={watchAd} style={[styles.btn, { backgroundColor: colors.card, borderColor: colors.accent, borderWidth: 1 }]}>
+          <Text style={{ color: colors.accent, fontWeight: '700' }}>{rtl.isRTL ? `📺 شاهد إعلانًا (+150) — اليوم ${ov?.ads_today ?? 0}/${ov?.ads_max ?? 5}` : `📺 Watch ad (+150) — ${ov?.ads_today ?? 0}/${ov?.ads_max ?? 5} today`}</Text>
+        </TouchableOpacity>
+        {ov?.referral_code ? (
+          <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: 10 }}>
+            {rtl.isRTL ? `كود الإحالة: ${ov.referral_code} — ادعُ صديقًا ولكما 500` : `Referral: ${ov.referral_code} — invite & both get 500`}
+          </Text>
+        ) : null}
+      </ScrollView>
+    </View>
+  );
+}
+const styles = StyleSheet.create({
+  wrap: { flex: 1, paddingTop: 50 },
+  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
+  title: { fontSize: 20, fontWeight: '800' },
+  card: { marginHorizontal: 16, marginBottom: 10, borderRadius: 18, borderWidth: 1, padding: 14 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
+  tier: { fontSize: 16, fontWeight: '800', textTransform: 'capitalize' },
+  btn: { marginHorizontal: 16, marginTop: 10, borderRadius: 16, padding: 14, alignItems: 'center' },
+});

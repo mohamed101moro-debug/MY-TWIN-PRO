@@ -1,114 +1,223 @@
-"""Economy Routes v6 — سلطة الخادم فقط، مصادقة، لغة كائن حي (A-001/A-003/A-004)."""
-import logging
-from datetime import datetime, timezone, timedelta
+"""Economy Routes v3 — تسعير استراتيجي + فلسفة التدرج العلائقي"""
+import logging, time
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from app.api.dependencies.auth import get_current_user_id, get_user_tier
 from app.infrastructure.database.supabase_client import get_db
-from app.core.living_messages import ENERGY, REST_OPTIONS, ACTIONS
-
+try:
+    from app.api.dependencies.auth import get_current_user_id
+except Exception:
+    from app.api.dependencies.auth import get_user_id as get_current_user_id
 logger = logging.getLogger("economy_routes")
 router = APIRouter(prefix="/api/economy", tags=["economy"])
+try:
+    from app.infrastructure.cache import get as cget, set as cset
+except Exception:
+    _mem = {}
+    def cget(k): return _mem.get(k)
+    def cset(k, v, ttl=0): _mem[k] = v
+try:
+    from token_limits import add_referral_bonus
+except Exception:
+    add_referral_bonus = None
 
-CAPS = {"free": {"energy": 3, "capability": 2}, "plus": {"energy": 2, "capability": 2}}
-ENERGY_GRANT = 0.17
-CAP_PASS_MINUTES = 60
-COOLDOWN_HOURS = 2
+ADS_DAILY_MAX = 5
+TRIAL_DAYS = 3
 
-class AdRewardRequest(BaseModel):
-    ad_type: str = "energy"
-    ad_platform: str = "admob"
-    capability: str = "general"
+PRICING = [
+    {
+        "tier": "free",
+        "price": 0,
+        "period": "forever",
+        "philosophy": "أعرفك",
+        "features": [
+            "15 رسالة/يوم",
+            "إعلانات داخل المحادثة",
+            "Energy محدود",
+            "صوت عصبي مجاني (Edge TTS)",
+            "ذاكرة أساسية (7 أيام)",
+            "Inner Life أساسي",
+            "Soul Observatory محدود"
+        ],
+        "gating": {
+            "messages_per_day": 15,
+            "memory_days": 7,
+            "voice_provider": "edge-tts",
+            "vision_enabled": False,
+            "dreams_enabled": False,
+            "prediction_enabled": False,
+            "proactive_enabled": False,
+            "ads_in_chat": True,
+            "priority_inference": False,
+        }
+    },
+    {
+        "tier": "plus",
+        "price": 5.99,
+        "period": "month",
+        "philosophy": "أتذكرك",
+        "features": [
+            "بدون إعلانات داخل المحادثة",
+            "50 رسالة/يوم",
+            "Energy أكبر",
+            "صوت عصبي مجاني",
+            "ذاكرة أعمق (30 يوم)",
+            "مكالمات صوتية",
+            "Rituals يومية",
+            "Presence محسّنة"
+        ],
+        "gating": {
+            "messages_per_day": 50,
+            "memory_days": 30,
+            "voice_provider": "edge-tts",
+            "vision_enabled": False,
+            "dreams_enabled": False,
+            "prediction_enabled": False,
+            "proactive_enabled": False,
+            "ads_in_chat": False,
+            "priority_inference": False,
+        }
+    },
+    {
+        "tier": "premium",
+        "price": 14.99,
+        "period": "month",
+        "philosophy": "أفهمك",
+        "features": [
+            "رسائل غير محدودة",
+            "طاقة عالية",
+            "صوت ElevenLabs عربي",
+            "نسخ صوتي مصقول (STT polishing)",
+            "رؤية مشتركة (Vision)",
+            "تنبؤات سلوكية",
+            "تحليل أحلام",
+            "ذاكرة عميقة (90 يوم)",
+            "تفاعل استباقي",
+            "Inner Life متقدم"
+        ],
+        "gating": {
+            "messages_per_day": 999,
+            "memory_days": 90,
+            "voice_provider": "elevenlabs",
+            "vision_enabled": True,
+            "dreams_enabled": True,
+            "prediction_enabled": True,
+            "proactive_enabled": True,
+            "ads_in_chat": False,
+            "priority_inference": False,
+        }
+    },
+    {
+        "tier": "pro",
+        "price": 89.99,
+        "period": "6months",
+        "philosophy": "أعيش معك",
+        "features": [
+            "كل مزايا Premium",
+            "طاقة قصوى (Maximum Energy)",
+            "ذاكرة غير محدودة",
+            "أولوية استدلال AI",
+            "تنبؤات متقدمة",
+            "استقلالية متقدمة",
+            "إدراك حسي متقدم",
+            "Inner Life عميق جدًا",
+            "ميزات تجريبية مستقبلية",
+            "أقل قيود استخدام"
+        ],
+        "gating": {
+            "messages_per_day": 9999,
+            "memory_days": 9999,
+            "voice_provider": "elevenlabs",
+            "vision_enabled": True,
+            "dreams_enabled": True,
+            "prediction_enabled": True,
+            "proactive_enabled": True,
+            "ads_in_chat": False,
+            "priority_inference": True,
+        }
+    },
+    {
+        "tier": "yearly",
+        "price": 149.99,
+        "period": "year",
+        "philosophy": "Best Value",
+        "equivalent_monthly": 12.50,
+        "features": [
+            "كل مزايا Premium",
+            "سنة كاملة بسعر موسم",
+            "خصم 16.6% (وفّر $29.89)",
+            "ميزات مبكرة"
+        ],
+        "gating": {
+            "messages_per_day": 999,
+            "memory_days": 90,
+            "voice_provider": "elevenlabs",
+            "vision_enabled": True,
+            "dreams_enabled": True,
+            "prediction_enabled": True,
+            "proactive_enabled": True,
+            "ads_in_chat": False,
+            "priority_inference": False,
+        }
+    },
+]
 
-def _today():
-    return datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+@router.get("/pricing")
+async def pricing():
+    return {"catalog": PRICING}
 
-def _count(user_id, ad_type):
-    res = get_db().table("ad_views").select("id").eq("user_id", user_id) \
-        .eq("ad_type", ad_type).gte("created_at", _today()).execute()
-    return len(res.data or [])
-
-def _mood(level):
-    return "full" if level > 0.7 else "warming" if level > 0.4 else "tired" if level > 0.15 else "exhausted"
-
-@router.get("/balance")
-async def get_balance(user_id: str = Depends(get_current_user_id),
-                      tier: str = Depends(get_user_tier)):
-    from app.engine.energy.twin_energy_engine import twin_energy_engine
-    from app.domain.services.limits_service import get_usage_summary
-    state = await twin_energy_engine.get_energy_state(user_id, tier=tier)
-    usage = get_usage_summary(user_id, tier)
-    level = state.get("energy", 0.5)
-    mood = _mood(level)
-    caps = CAPS.get(tier)
+@router.get("/overview")
+async def overview(uid: str = Depends(get_current_user_id)):
+    db = get_db(); tier = "free"; ref = ""
+    try:
+        p = db.table("profiles").select("tier,referral_code").eq("id", uid).single().execute()
+        tier = (p.data or {}).get("tier") or "free"; ref = (p.data or {}).get("referral_code") or ""
+    except Exception: pass
+    tr = cget(f"trial:{uid}")
+    if tr and time.time() > float(tr) and tier == "premium":
+        try: db.table("profiles").update({"tier": "free"}).eq("id", uid).execute()
+        except Exception: pass
+        tier = "free"
+    today = time.strftime("%Y-%m-%d"); used = 0; ads = 0
+    try:
+        u = db.table("daily_usage").select("*").eq("user_id", uid).eq("date", today).single().execute()
+        used = (u.data or {}).get("messages", 0); ads = (u.data or {}).get("ads", 0)
+    except Exception: pass
+    current_tier = next((t for t in PRICING if t["tier"] == tier), PRICING[0])
     return {
-        "energy": {"level": level, "mood": mood, "living_message": ENERGY[mood],
-                   "is_low": state.get("is_low_energy", False),
-                   "is_exhausted": state.get("is_exhausted", False)},
-        "subscription": {"tier": tier,
-                         "messages_remaining": usage.get("messages", {}).get("remaining", 0)},
-        "ads": None if caps is None else {
-            "energy_left": max(0, caps["energy"] - _count(user_id, "energy")),
-            "capability_left": max(0, caps["capability"] - _count(user_id, "capability"))},
-        "rest_options": REST_OPTIONS,
+        "tier": tier,
+        "referral_code": ref,
+        "used_today": used,
+        "ads_today": ads,
+        "ads_max": ADS_DAILY_MAX,
+        "trial_active": bool(tr and time.time() < float(tr)),
+        "catalog": PRICING,
+        "current_tier": current_tier,
+        "gating": current_tier["gating"],
     }
 
 @router.post("/ad-reward")
-async def claim_ad_reward(body: AdRewardRequest,
-                          user_id: str = Depends(get_current_user_id),
-                          tier: str = Depends(get_user_tier)):
-    if body.ad_type not in ("energy", "capability"):
-        raise HTTPException(400, "BAD_AD_TYPE")
-    caps = CAPS.get(tier)
-    if caps is None:
-        return {"success": False, "living_message": ACTIONS["not_for_tier"]}
-    if _count(user_id, body.ad_type) >= caps[body.ad_type]:
-        raise HTTPException(429, detail=ACTIONS["cap_reached"])
+async def ad_reward(uid: str = Depends(get_current_user_id)):
+    db = get_db(); today = time.strftime("%Y-%m-%d"); ads = 0
+    try:
+        u = db.table("daily_usage").select("*").eq("user_id", uid).eq("date", today).single().execute()
+        ads = (u.data or {}).get("ads", 0)
+    except Exception: pass
+    if ads >= ADS_DAILY_MAX: raise HTTPException(429, "daily ads limit reached")
+    try: db.rpc("increment_daily_usage", {"p_user_id": uid, "p_field": "ads"}).execute()
+    except Exception: pass
+    granted = 0
+    if add_referral_bonus:
+        try: add_referral_bonus(uid, 150); granted = 150
+        except Exception: pass
+    return {"success": True, "tokens_granted": granted, "ads_today": ads + 1}
+
+@router.post("/trial/start")
+async def trial_start(uid: str = Depends(get_current_user_id)):
     db = get_db()
-    if body.ad_type == "energy":
-        last = db.table("ad_views").select("created_at").eq("user_id", user_id) \
-            .eq("ad_type", "energy").order("created_at", desc=True).limit(1).execute()
-        if last.data and (datetime.now(timezone.utc) -
-                datetime.fromisoformat(last.data[0]["created_at"])) < timedelta(hours=COOLDOWN_HOURS):
-            raise HTTPException(429, detail=ACTIONS["cooldown"])
-    db.table("ad_views").insert({"user_id": user_id, "ad_type": body.ad_type,
-                                 "ad_platform": body.ad_platform}).execute()
-    if body.ad_type == "energy":
-        from app.engine.energy.twin_energy_engine import twin_energy_engine
-        await twin_energy_engine.restore_energy(user_id, ENERGY_GRANT, "ad_energy")
-        return {"success": True, "grant": "energy", "amount": ENERGY_GRANT,
-                "living_message": ACTIONS["ad_refreshed"]}
-    expires = (datetime.now(timezone.utc) + timedelta(minutes=CAP_PASS_MINUTES)).isoformat()
-    db.table("capability_passes").upsert({"user_id": user_id,
-        "capability": body.capability or "general", "expires_at": expires},
-        on_conflict="user_id,capability").execute()
-    return {"success": True, "grant": "capability", "expires_at": expires,
-            "living_message": ACTIONS["capability_hour"]}
+    if cget(f"trial_used:{uid}"): raise HTTPException(409, "trial already used")
+    exp = time.time() + TRIAL_DAYS * 86400
+    cset(f"trial:{uid}", exp, TRIAL_DAYS * 86400 + 60); cset(f"trial_used:{uid}", 1, 30 * 86400)
+    try: db.table("profiles").update({"tier": "premium"}).eq("id", uid).execute()
+    except Exception: pass
+    return {"success": True, "expires_at": exp}
 
-@router.post("/rest")
-async def take_rest(user_id: str = Depends(get_current_user_id)):
-    try:
-        get_db().table("twin_internal_states").update({
-            "resting_until": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat()}) \
-            .eq("user_id", user_id).execute()
-    except Exception as e:
-        logger.warning(f"rest update skipped: {e}")
-    return {"success": True, "living_message": ACTIONS["rest_granted"]}
-
-@router.get("/energy/status")
-async def energy_status(user_id: str = Depends(get_current_user_id),
-                        tier: str = Depends(get_user_tier)):
-    from app.engine.energy.twin_energy_engine import twin_energy_engine
-    state = await twin_energy_engine.get_energy_state(user_id, tier=tier)
-    level = state.get("energy", 0.5)
-    mood = _mood(level)
-    return {"level": level, "mood": mood, "living_message": ENERGY[mood]}
-
-@router.post("/daily-login")
-async def daily_login(user_id: str = Depends(get_current_user_id)):
-    try:
-        get_db().table("profiles").update({"last_active": datetime.now(timezone.utc).isoformat()}).eq("id", user_id).execute()
-    except Exception:
-        pass
-    return {"success": True, "living_message": "سجلتُ حضورك اليوم. أنا ممتن."}
+logger.info("✅ Economy Routes v3 ready (strategic pricing + feature gating)")
