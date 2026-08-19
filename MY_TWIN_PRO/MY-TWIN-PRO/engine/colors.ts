@@ -27,8 +27,11 @@ export type ThemeColors = AppColors;
 export const ThemeColors: { dark: AppColors; light: AppColors } = { dark: DARK, light: LIGHT };
 export const SPACING = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 };
 export const FONTS = {
-  regular: 'Cairo-Regular', medium: 'Cairo-Medium', bold: 'Cairo-Bold',
-  sizes: { xs: 10, sm: 12, md: 14, lg: 16, xl: 20, xxl: 28 },
+  ai: 'Cairo-Medium',
+  arabicBold: 'Cairo-Bold',
+  arabicMedium: 'Cairo-Medium',
+  arabicRegular: 'Cairo-Regular',
+  sizes: { body: 16, small: 13, subtitle: 20, tiny: 11, title: 28 },
 };
 export function syncInitialTheme(): void {
   try { /* الثيم يُدار لحظيًا عبر useColorScheme داخل المكونات */ } catch {}
