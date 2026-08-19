@@ -2,7 +2,7 @@
   "expo": {
     "name": "My Twin",
     "slug": "my-twin",
-    "owner": "soulsync.ai",
+    "owner": "soulsync.7",
     "version": "1.0.0",
     "runtimeVersion": {
       "policy": "sdkVersion"
@@ -90,7 +90,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "7b96fc72-c7e0-4ebf-937f-e41354fc0ebe"
+        "projectId": "49db469b-9aca-4ffc-8b34-88b140528840"
       },
       "API_URL": "my-twin-pro-production.up.railway.app",
       "ENVIRONMENT": "production"
