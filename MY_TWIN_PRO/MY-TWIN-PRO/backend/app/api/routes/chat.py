@@ -49,6 +49,11 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user_id), ti
         except Exception:
             pass
         return build_envelope(base, rid)
+    try:
+        from app.features.economy.tier_gate import assert_daily_cap
+        await assert_daily_cap(user_id, get_db())
+    except ImportError:
+        pass
     gate_note = None
     if req.requested_capability:
         from app.core.capability_gate import can_use_capability

@@ -63,6 +63,14 @@ class UnifiedMemoryEngine:
             db = get_db()
             result = db.table(TABLE_NAME).select("*").eq("user_id", user_id).order("created_at", desc=True).limit(50).execute()
             memories = result.data or []
+            try:
+                from app.features.economy.tier_gate import memory_days
+                _md = await memory_days(user_id, db)
+                if _md and _md < 999:
+                    _cut = (datetime.now(timezone.utc) - timedelta(days=_md)).isoformat()
+                    memories = [m for m in memories if (m.get("created_at") or "") >= _cut]
+            except Exception:
+                pass
             scored = []
             for m in memories:
                 score = m.get("importance", 50)
