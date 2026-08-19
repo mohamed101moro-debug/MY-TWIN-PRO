@@ -3,7 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { presenceEngine } from '../../../engine/presence/PresenceEngine';
 import type { PresenceState } from '../../../engine/presence/PresenceTypes';
-import { useDeviceContext } from '../../../hooks/useDeviceContext';
+import { useDeviceContext } from '../../hooks/useDeviceContext';
 import AwarenessBackground from './AwarenessBackground';
 import EntityWaveform from './EntityWaveform';
 import LivingEntity from './LivingEntity';
