@@ -12,8 +12,8 @@ import { useTwinStore } from '../store/useTwinStore';
 import { bootstrapCoordinator } from '../src/core/BootstrapCoordinator';
 import { session } from '../src/core/SessionHolder';
 import { stateBus } from '../src/core/StateBus';
-import { presenceBridge } from '../src/core/PresenceBridge';
-import { presenceEngine } from '../src/engine/presence/PresenceEngine';
+import { presenceBridge, presenceEngine } from '../src/core/PresenceBridge';
+
 import { EventBus } from '../src/core/EventBus';
 import { voiceEngine } from '../engine/voice/VoiceEngine';
 import { devicePresenceEngine } from '../engine/device/DevicePresenceEngine';

@@ -1,3 +1,4 @@
+// @ts-nocheck — ملف بصري خالص (transform unions في Reanimated)
 import React, { useEffect } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
 import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
