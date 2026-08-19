@@ -18,6 +18,7 @@ import { presenceBridge, presenceEngine } from '../src/core/PresenceBridge';
 import { EventBus } from '../src/core/EventBus';
 import { voiceEngine } from '../engine/voice/VoiceEngine';
 import { devicePresenceEngine } from '../engine/device/DevicePresenceEngine';
+import { sensorContextEngine } from '../engine/sensor/SensorContextEngine';
 import { shareVision, sharedPresence } from '../engine/vision/VisionBridge';
 import { refreshPlace } from '../engine/place/PlaceBridge';
 import { useVoicePresence } from '../src/hooks/useVoicePresence';
@@ -78,6 +79,7 @@ export default function LivingWorld() {
     if (voicePresence.isRecording) stateBus.patch({ voiceLevel: voicePresence.level, listening: true });
     else if (!stateBus.getState().speaking) stateBus.patch({ voiceLevel: 0 });
   }, [voicePresence.level, voicePresence.isRecording]);
+  useEffect(() => { const cv = setInterval(() => { try { sensorContextEngine.evaluate(); } catch {} }, 30000); return () => clearInterval(cv); }, []);
   useEffect(() => {
     const iv = setInterval(() => {
       try {
