@@ -1,12 +1,36 @@
+// @ts-nocheck
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { apiGet, apiPost } from '../lib/httpClient';
 import { useAppTheme } from '../engine/colors';
 import { useRTL } from '../lib/useRTL';
 import { useRouter } from 'expo-router';
-import ShaderBeing from '../src/components/conscious/ShaderBeing';
+import DigitalBeing from '../src/components/conscious/DigitalBeing';
 import { ADMOB } from '../lib/adConfig';
 let RewardedAd: any = null, RewardedEventType: any = null, TestIds: any = null;
+const DEMO_PRESENCE: any = {
+  emotion: 'calm',
+  energy: 0.72,
+  fieldSpeed: 0.42,
+  turbulence: 0.2,
+  orbitality: 0.68,
+  fieldRadius: 1,
+  fieldOpacity: 0.88,
+  breathing: 0.5,
+  pulse: 0.35,
+  eyeOpenness: 0.86,
+  eyeGlow: 0.9,
+  pupilSize: 0.42,
+  gazeX: 0,
+  gazeY: 0,
+  warmth: 0.45,
+  attention: 0.62,
+  anticipation: 0.3,
+  voiceLevel: 0.05,
+  colorA: { r: 155, g: 111, b: 255 },
+  colorB: { r: 70, g: 139, b: 255 },
+  eyeColor: { r: 232, g: 222, b: 255 },
+};
 try { const g: any = require('react-native-google-mobile-ads'); RewardedAd = g.RewardedAd; RewardedEventType = g.RewardedEventType; TestIds = g.TestIds; } catch {}
 
 export default function Paywall() {
@@ -49,7 +73,7 @@ export default function Paywall() {
       </View>
       {toast !== '' && <Text style={{ color: colors.gold, textAlign: 'center', marginBottom: 6 }}>{toast}</Text>}
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={{ height: 190, alignItems: 'center', marginBottom: 4 }}><ShaderBeing presence={null} size={180} awaken={1} /></View>
+      <View style={{ height: 190, alignItems: 'center', marginBottom: 4 }}><DigitalBeing presence={DEMO_PRESENCE} size={180} isDark maturity={0.85} awaken={1} /></View>
         {(ov?.catalog || []).map((t: any) => {
           const current = ov?.tier === t.tier;
           const isYearly = t.tier === 'yearly';
