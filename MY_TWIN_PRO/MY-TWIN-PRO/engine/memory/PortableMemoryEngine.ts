@@ -28,13 +28,14 @@ export interface TrainingDataExport {
   }>;
 }
 
-const INTERNAL_API_KEY = 'SOUL_SYNC_INTERNAL_KEY'; // يجب تخزينها في متغيرات البيئة
+const INTERNAL_API_KEY = ((global as any)?.process?.env?.EXPO_PUBLIC_SOUL_SYNC_INTERNAL_KEY) || ''; // من متغيرات البيئة فقط — أداة داخلية مؤجلة لما بعد الإطلاق
 
 export class PortableMemoryEngine {
   /**
    * تصدير بيانات التدريب (للاستخدام الداخلي فقط)
    */
   async exportForTraining(): Promise<TrainingDataExport> {
+    if (!INTERNAL_API_KEY) throw new Error('INTERNAL_API_KEY not configured');
     try {
       const response = await fetch(`/api/v1/admin/export/training?api_key=${INTERNAL_API_KEY}`);
       const data = await response.json();

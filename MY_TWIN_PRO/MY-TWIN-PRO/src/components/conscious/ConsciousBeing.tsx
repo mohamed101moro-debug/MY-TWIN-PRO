@@ -1,3 +1,4 @@
+/** RESERVE LAYER — رندر Skia بديل موثق؛ المسار الحي = ConsciousStage v5. لا يُحذف. */
 import React, { useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import DigitalBeing from './DigitalBeing';

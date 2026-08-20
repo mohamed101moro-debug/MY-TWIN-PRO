@@ -1,3 +1,4 @@
+# DEPRECATED — نسخة أولية للرجوع فقط. الخلفية الحية = backend/app/ (FastAPI factory).
 """MyTwin API v23.0.0 — Soul Kernel boot + governed + graceful."""
 import logging, sys, os, time, uuid
 from pathlib import Path
