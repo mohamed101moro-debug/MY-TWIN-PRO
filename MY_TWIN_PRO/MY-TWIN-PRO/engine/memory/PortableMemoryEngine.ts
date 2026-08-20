@@ -28,6 +28,7 @@ export interface TrainingDataExport {
   }>;
 }
 
+const API_BASE = 'https://my-twin-pro-production.up.railway.app';
 const INTERNAL_API_KEY = ((global as any)?.process?.env?.EXPO_PUBLIC_SOUL_SYNC_INTERNAL_KEY) || ''; // من متغيرات البيئة فقط — أداة داخلية مؤجلة لما بعد الإطلاق
 
 export class PortableMemoryEngine {
@@ -37,7 +38,7 @@ export class PortableMemoryEngine {
   async exportForTraining(): Promise<TrainingDataExport> {
     if (!INTERNAL_API_KEY) throw new Error('INTERNAL_API_KEY not configured');
     try {
-      const response = await fetch(`/api/v1/admin/export/training?api_key=${INTERNAL_API_KEY}`);
+      const response = await fetch(`${API_BASE}/api/v1/admin/export/training?api_key=${INTERNAL_API_KEY}`);
       const data = await response.json();
       
       return {
@@ -64,7 +65,7 @@ export class PortableMemoryEngine {
    * تصدير بتنسيق Llama (للتدريب المباشر)
    */
   async exportForLlama(): Promise<string> {
-    const response = await fetch(`/api/v1/admin/export/training?api_key=${INTERNAL_API_KEY}`);
+    const response = await fetch(`${API_BASE}/api/v1/admin/export/training?api_key=${INTERNAL_API_KEY}`);
     const data = await response.json();
     return JSON.stringify(data.data, null, 2);
   }
@@ -79,7 +80,7 @@ export class PortableMemoryEngine {
     estimatedFileSizeMB: number;
   }> {
     try {
-      const response = await fetch(`/api/v1/admin/export/training?api_key=${INTERNAL_API_KEY}`);
+      const response = await fetch(`${API_BASE}/api/v1/admin/export/training?api_key=${INTERNAL_API_KEY}`);
       const data = await response.json();
       const count = data.total_records || 0;
       const estimatedTokens = count * 50;

@@ -28,6 +28,7 @@ export class SensorContextEngine {
   };
 
   private activityHistory: string[] = [];
+private lastStoreTs = 0;
   private maxHistoryLength = 20;
 
   evaluate(): SensorContext {
@@ -132,7 +133,8 @@ export class SensorContextEngine {
 
   private async storeInMemory(): Promise<void> {
     // تخزين في الذاكرة كل 5 دقائق فقط (لتجنب الإغراق)
-    if (Date.now() % 300000 < 1000) {
+    if (Date.now() - this.lastStoreTs > 300000) {
+      this.lastStoreTs = Date.now();
       try {
         await unifiedBrainBridge.storeMemory(
           'sensor_context',
