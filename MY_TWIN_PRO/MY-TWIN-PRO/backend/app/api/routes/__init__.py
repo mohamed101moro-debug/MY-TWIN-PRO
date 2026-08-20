@@ -73,3 +73,9 @@ try:
     api_router.include_router(tts_routes.router)
 except Exception:
     pass
+
+try:
+    from app.api.routes import billing_routes
+    api_router.include_router(billing_routes.router)
+except Exception:
+    pass

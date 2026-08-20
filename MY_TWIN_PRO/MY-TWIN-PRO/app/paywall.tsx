@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import DigitalBeing from '../src/components/conscious/DigitalBeing';
 import ShaderBeing from '../src/components/conscious/ShaderBeing';
 import { ADMOB } from '../lib/adConfig';
+import { googleBilling } from '../lib/googleBilling';
 let RewardedAd: any = null, RewardedEventType: any = null, TestIds: any = null;
 const DEMO_PRESENCE: any = {
   emotion: 'calm',
@@ -55,15 +56,21 @@ export default function Paywall() {
   };
   const buy = async (t: any) => {
     try {
-      const iap: any = require('react-native-iap');
-      await iap.initConnection?.();
-      const sku = 'mytwin_' + t.tier;
-      const purchase = await (iap.requestSubscription?.(sku) ?? iap.requestPurchase?.(sku));
-      await apiPost('/api/economy/purchase/record', { tier: t.tier, token: purchase?.purchaseToken ?? purchase?.transactionReceipt ?? '', sku });
-      setToast('💜 تم التفعيل'); refresh();
-    } catch (e: any) {
-      try { await apiPost('/api/economy/purchase/record', { tier: t.tier, token: 'sandbox', sku: 'mytwin_' + t.tier }); setToast('✅ تفعيل ساندبوكس (اختبار)'); refresh(); } catch { setToast(String(e?.message || '').slice(0, 40)); }
-    }
+      const res = await googleBilling.purchase('mytwin_' + t.tier);
+      if (res.ok && res.token) {
+        const v: any = await apiPost('/api/economy/purchase/verify', { sku: 'mytwin_' + t.tier, token: res.token, tier: t.tier });
+        setToast(v?.verified ? '💜 تم التفعيل بتحقق Google' : '✅ تم التفعيل (تحقق غير متاح)');
+      } else if (res.error === 'E_CANCELLED') { setToast('أُلغيت العملية'); }
+      else { await apiPost('/api/economy/purchase/record', { tier: t.tier, token: 'sandbox_' + Date.now(), sku: 'mytwin_' + t.tier }); setToast('✅ تفعيل ساندبوكس (اختبار)'); }
+      refresh();
+    } catch (e: any) { setToast(String(e?.message || '').slice(0, 40)); }
+  };
+  const restore = async () => {
+    try {
+      const r = await googleBilling.restore();
+      if (r && r.length) { await apiPost('/api/economy/purchase/verify', { token: r[0].token, sku: r[0].sku || 'mytwin_premium', tier: 'premium' }); setToast('♻️ تمت الاستعادة'); refresh(); }
+      else setToast('لا مشتريات سابقة');
+    } catch { setToast('تعذرت الاستعادة'); }
   };
   const startTrial = async () => { try { await apiPost('/api/economy/trial/start', {}); setToast('🎉 3 أيام premium'); refresh(); } catch (e: any) { setToast(String(e?.message || '').slice(0, 40)); } };
   return (
@@ -102,6 +109,9 @@ export default function Paywall() {
         })}
         <TouchableOpacity onPress={startTrial} style={[styles.btn, { backgroundColor: colors.accent }]}>
           <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{rtl.isRTL ? '🎁 جرّب premium 3 أيام' : '🎁 Try premium 3 days'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={restore} style={[styles.btn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+          <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>{rtl.isRTL ? '♻️ استعادة المشتريات' : '♻️ Restore purchases'}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={watchAd} style={[styles.btn, { backgroundColor: colors.card, borderColor: colors.accent, borderWidth: 1 }]}>
           <Text style={{ color: colors.accent, fontWeight: '700' }}>{rtl.isRTL ? `📺 شاهد إعلانًا (+150) — اليوم ${ov?.ads_today ?? 0}/${ov?.ads_max ?? 5}` : `📺 Watch ad (+150) — ${ov?.ads_today ?? 0}/${ov?.ads_max ?? 5} today`}</Text>
