@@ -6,6 +6,7 @@ import { useAppTheme } from '../engine/colors';
 import { useRTL } from '../lib/useRTL';
 import { useRouter } from 'expo-router';
 import DigitalBeing from '../src/components/conscious/DigitalBeing';
+import ShaderBeing from '../src/components/conscious/ShaderBeing';
 import { ADMOB } from '../lib/adConfig';
 let RewardedAd: any = null, RewardedEventType: any = null, TestIds: any = null;
 const DEMO_PRESENCE: any = {
@@ -73,7 +74,7 @@ export default function Paywall() {
       </View>
       {toast !== '' && <Text style={{ color: colors.gold, textAlign: 'center', marginBottom: 6 }}>{toast}</Text>}
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-      <View style={{ height: 190, alignItems: 'center', marginBottom: 4 }}><DigitalBeing presence={DEMO_PRESENCE} size={180} isDark maturity={0.85} awaken={1} /></View>
+      <View style={{ height: 190, alignItems: 'center', marginBottom: 4 }}><ShaderBeing presence={DEMO_PRESENCE} size={180} awaken={1} /></View>
         {(ov?.catalog || []).map((t: any) => {
           const current = ov?.tier === t.tier;
           const isYearly = t.tier === 'yearly';

@@ -1,3 +1,4 @@
+import { Linking } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
@@ -30,8 +31,8 @@ const WINGS = [
   { id: 'understanding', icon: Brain, label_ar: 'كيف أراك', label_en: 'Understanding You', component: UnderstandingWing, color: '#3B82F6' },
   { id: 'capabilities', icon: Grid3X3, label_ar: 'الغرف', label_en: 'Capabilities', component: CapabilitiesWing, color: '#F59E0B' },
   { id: 'settings', icon: Settings, label_ar: 'الإعدادات', label_en: 'Settings', component: SettingsWing, color: '#6B7280' },
-  { id: 'about', icon: Info, label_ar: 'عن التوأم', label_en: 'About', component: AboutWing, color: '#6366F1' },
-          <TouchableOpacity onPress={() => { try { require('react-native').Linking.openURL('https://sirmarket7-cloud.github.io/Soul-Sync/index.html'); } catch {} }} style={{ marginTop: 10 }}><Text style={{ color: '#9B6FFF', fontSize: 12 }}>🌐 Soul-Sync — صفحة الشركة</Text></TouchableOpacity>
+  { id: 'about', icon: Info, label_ar: 'عن التوأم', label_en: 'About', component: AboutCompanyWrap, color: '#6366F1' },
+          
   { id: 'help', icon: HelpCircle, label_ar: 'المساعدة', label_en: 'Help', component: HelpWing, color: '#14B8A6' },
   // Universe Layer
   { id: 'twinplus', icon: Crown, label_ar: 'My Twin+', label_en: 'My Twin+', component: TwinPlusWing, color: '#EC4899' },
@@ -65,12 +66,12 @@ export default function SoulObservatory() {
     setTimeout(() => setVisible(false), 300);
   };
 
-  if (!visible) return null;
-
+  
   const ActiveComponent = WINGS.find(w => w.id === activeWing)?.component || SoulWing;
 
   const overlayStyle = useAnimatedStyle(() => ({ opacity: overlayOpacity.value }));
   const contentStyle = useAnimatedStyle(() => ({ transform: [{ scale: contentScale.value }] }));
+if (!visible) return null;
 
   return (
     <Animated.View style={[styles.overlay, overlayStyle]}>
@@ -121,3 +122,15 @@ const styles = StyleSheet.create({
   wingLabel: { fontSize: 13, fontWeight: '600' },
   content: { padding: SPACE.lg },
 });
+
+const __AboutOriginal: any = AboutWing;
+function AboutCompanyWrap(props: any) {
+  return (
+    <>
+      <__AboutOriginal {...props} />
+      <TouchableOpacity onPress={() => { try { Linking.openURL('https://sirmarket7-cloud.github.io/Soul-Sync/index.html'); } catch {} }} style={{ marginTop: 12, alignSelf: 'center' }}>
+        <Text style={{ color: '#9B6FFF', fontSize: 12 }}>🌐 Soul-Sync — صفحة الشركة</Text>
+      </TouchableOpacity>
+    </>
+  );
+}
