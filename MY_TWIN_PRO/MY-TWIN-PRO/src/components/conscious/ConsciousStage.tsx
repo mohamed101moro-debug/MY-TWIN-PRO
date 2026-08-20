@@ -1,14 +1,33 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { presenceEngine } from '../../../engine/presence/PresenceEngine';
 import type { PresenceState } from '../../../engine/presence/PresenceTypes';
-import { useDeviceContext } from '../../hooks/useDeviceContext';
+import { useDeviceContext } from '../../../hooks/useDeviceContext';
+import { ThemeColors } from '../../../engine/colors';
 import AwarenessBackground from './AwarenessBackground';
 import EntityWaveform from './EntityWaveform';
 import LivingEntity from './LivingEntity';
 import { presenceToEntity } from './useEntityState';
-/** المسرح الواعي v2 — ولادة تدريجية + خلفية حية + كيان سلوكي + موجة صوت. */
+const DARK = ThemeColors.dark;
+/** كيان احتياطي نباض (بدون SVG) — يظهر فقط إذا انهار الرسم الغني. */
+function FallbackBeing({ size }: { size: number }) {
+  const p = useSharedValue(0);
+  useEffect(() => { p.value = withRepeat(withTiming(1, { duration: 3200, easing: Easing.inOut(Easing.sin) }), -1, true); }, []);
+  const st = useAnimatedStyle(() => ({ transform: [{ scale: 1 + p.value * 0.06 }], opacity: 0.7 + p.value * 0.3 }));
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View style={[{ width: size * 0.52, height: size * 0.52, borderRadius: size, backgroundColor: DARK.entityPurple, shadowColor: DARK.entityCyan, shadowRadius: 40, shadowOpacity: 0.6 }, st]} />
+      <View style={{ position: 'absolute', width: size * 0.1, height: size * 0.055, borderRadius: 999, backgroundColor: '#FFFFFF' }} />
+    </View>
+  );
+}
+class LayerBoundary extends React.Component<{ name: string; fallback: React.ReactNode; children: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(e: any) { try { console.warn('[STAGE-LAYER]', this.props.name, String(e?.message)); } catch {} }
+  render() { return this.state.failed ? this.props.fallback : this.props.children; }
+}
 export default function ConsciousStage({ size = 280 }: { size?: number }) {
   const [pres, setPres] = useState<PresenceState | null>(null);
   const [awaken, setAwaken] = useState(0);
@@ -31,13 +50,19 @@ export default function ConsciousStage({ size = 280 }: { size?: number }) {
   const batteryCalm = dev.batteryLevel < 0.2 ? 0.25 : 0;
   const intensity = Math.max(0.35, Math.min(1.15, 0.55 + energy * 0.45 + nightBoost - batteryCalm));
   return (
-    <View style={styles.wrap} pointerEvents="box-none">
-      <AwarenessBackground intensity={intensity * Math.max(0.25, awaken)} speaking={!!pres?.speaking} />
+    <View style={[styles.wrap, { backgroundColor: DARK.bg }]} pointerEvents="box-none">
+      <LayerBoundary name="background" fallback={<View style={StyleSheet.absoluteFill} />}>
+        <AwarenessBackground dark intensity={intensity * Math.max(0.25, awaken)} speaking={!!pres?.speaking} />
+      </LayerBoundary>
       <Animated.View style={[styles.center, birthStyle]} pointerEvents="box-none">
-        <LivingEntity state={state} size={size} intensity={Math.max(0.4, Math.min(1, intensity))} speaking={!!pres?.speaking} />
+        <LayerBoundary name="entity" fallback={<FallbackBeing size={size} />}>
+          <LivingEntity state={state} size={size} intensity={Math.max(0.4, Math.min(1, intensity))} speaking={!!pres?.speaking} />
+        </LayerBoundary>
       </Animated.View>
       <View style={styles.wave} pointerEvents="none">
-        <EntityWaveform active={!!pres?.speaking || !!pres?.listening} />
+        <LayerBoundary name="wave" fallback={null}>
+          <EntityWaveform active={!!pres?.speaking || !!pres?.listening} />
+        </LayerBoundary>
       </View>
     </View>
   );

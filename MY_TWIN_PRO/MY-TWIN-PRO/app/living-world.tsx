@@ -8,7 +8,7 @@ import { useTwinBrain } from '../src/hooks/useTwinBrain';
 import { track, initAnalytics } from '../lib/analytics';
 import { useRTL } from '../lib/useRTL';
 import { useRouter } from 'expo-router';
-import { useAppTheme } from '../engine/colors';
+import { useAppTheme, ThemeColors } from '../engine/colors';
 import { useTwinStore } from '../store/useTwinStore';
 import { bootstrapCoordinator } from '../src/core/BootstrapCoordinator';
 import { session } from '../src/core/SessionHolder';
@@ -55,7 +55,7 @@ const buildPresencePatch = (r: any): any => {
 };
 export default function LivingWorld() {
   const userId = useTwinStore(s => s.userId) || '';
-  const { colors } = useAppTheme();
+  const { colors: _tc } = useAppTheme(); const colors = ThemeColors.dark;
   const rtl = useRTL(); const router = useRouter(); const lang = rtl.isRTL ? 'ar' : 'en';
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Array<{ id: string; sender: 'user' | 'twin'; text: string }>>([]);

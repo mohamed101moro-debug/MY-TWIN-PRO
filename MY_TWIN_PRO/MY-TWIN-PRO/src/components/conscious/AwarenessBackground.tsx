@@ -4,6 +4,7 @@ import { StyleSheet, View, Dimensions } from 'react-native';
 import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from './theme';
+import { ThemeColors } from '../../../engine/colors';
 const { width, height } = Dimensions.get('window');
 const PARTICLES = [
   { left: 0.10, top: 0.18, size: 2, delay: 0 }, { left: 0.82, top: 0.20, size: 1.5, delay: 700 },
@@ -11,9 +12,10 @@ const PARTICLES = [
   { left: 0.12, top: 0.72, size: 1.5, delay: 900 }, { left: 0.76, top: 0.78, size: 1.2, delay: 1700 },
   { left: 0.48, top: 0.12, size: 1.2, delay: 2500 }, { left: 0.60, top: 0.88, size: 1.8, delay: 3200 },
 ];
-export interface AwarenessBackgroundProps { intensity?: number; speaking?: boolean; }
-export const AwarenessBackground = ({ intensity = 1, speaking = false }: AwarenessBackgroundProps) => {
-  const theme = useTheme();
+export interface AwarenessBackgroundProps { intensity?: number; speaking?: boolean; dark?: boolean; }
+export const AwarenessBackground = ({ intensity = 1, speaking = false, dark = true }: AwarenessBackgroundProps) => {
+  const _t = useTheme();
+  const theme = dark ? ThemeColors.dark : _t;
   const pulse = useSharedValue(0);
   const orbit = useSharedValue(0);
   useEffect(() => {
