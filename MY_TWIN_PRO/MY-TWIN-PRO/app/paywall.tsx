@@ -4,6 +4,8 @@ import { apiGet, apiPost } from '../lib/httpClient';
 import { useAppTheme } from '../engine/colors';
 import { useRTL } from '../lib/useRTL';
 import { useRouter } from 'expo-router';
+import ShaderBeing from '../src/components/conscious/ShaderBeing';
+import { ADMOB } from '../lib/adConfig';
 let RewardedAd: any = null, RewardedEventType: any = null, TestIds: any = null;
 try { const g: any = require('react-native-google-mobile-ads'); RewardedAd = g.RewardedAd; RewardedEventType = g.RewardedEventType; TestIds = g.TestIds; } catch {}
 
@@ -16,7 +18,7 @@ export default function Paywall() {
   useEffect(() => {
     if (!RewardedAd) return;
     try {
-      const ad = RewardedAd.createForAdRequest(TestIds.REWARDED, { requestNonPersonalizedAdsOnly: true });
+      const ad = RewardedAd.createForAdRequest(ADMOB.useTest ? TestIds.REWARDED : ADMOB.androidRewarded, { requestNonPersonalizedAdsOnly: true });
       ad.addRewardedEventListener?.(RewardedEventType.LOADED, () => { adReady.current = true; });
       ad.addRewardedEventListener?.(RewardedEventType.EARNED_REWARD, async () => { try { await apiPost('/api/economy/ad-reward', {}); setToast('+150 ✨'); refresh(); } catch {} });
       ad.load(); adRef.current = ad;
@@ -25,6 +27,18 @@ export default function Paywall() {
   const watchAd = async () => {
     if (adRef.current && adReady.current) { try { adRef.current.show(); return; } catch {} }
     try { await apiPost('/api/economy/ad-reward', {}); setToast('+150 ✨'); refresh(); } catch (e: any) { setToast(String(e?.message || '').slice(0, 40)); }
+  };
+  const buy = async (t: any) => {
+    try {
+      const iap: any = require('react-native-iap');
+      await iap.initConnection?.();
+      const sku = 'mytwin_' + t.tier;
+      const purchase = await (iap.requestSubscription?.(sku) ?? iap.requestPurchase?.(sku));
+      await apiPost('/api/economy/purchase/record', { tier: t.tier, token: purchase?.purchaseToken ?? purchase?.transactionReceipt ?? '', sku });
+      setToast('💜 تم التفعيل'); refresh();
+    } catch (e: any) {
+      try { await apiPost('/api/economy/purchase/record', { tier: t.tier, token: 'sandbox', sku: 'mytwin_' + t.tier }); setToast('✅ تفعيل ساندبوكس (اختبار)'); refresh(); } catch { setToast(String(e?.message || '').slice(0, 40)); }
+    }
   };
   const startTrial = async () => { try { await apiPost('/api/economy/trial/start', {}); setToast('🎉 3 أيام premium'); refresh(); } catch (e: any) { setToast(String(e?.message || '').slice(0, 40)); } };
   return (
@@ -35,6 +49,7 @@ export default function Paywall() {
       </View>
       {toast !== '' && <Text style={{ color: colors.gold, textAlign: 'center', marginBottom: 6 }}>{toast}</Text>}
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+      <View style={{ height: 190, alignItems: 'center', marginBottom: 4 }}><ShaderBeing presence={null} size={180} awaken={1} /></View>
         {(ov?.catalog || []).map((t: any) => {
           const current = ov?.tier === t.tier;
           const isYearly = t.tier === 'yearly';
@@ -56,6 +71,7 @@ export default function Paywall() {
                 </View>
               </View>
               {t.features.map((f: string, i: number) => <Text key={i} style={{ color: colors.textSecondary, fontSize: 12, marginVertical: 2 }}>• {f}</Text>)}
+              {t.price > 0 && !current && <TouchableOpacity onPress={() => buy(t)} style={{ marginTop: 8, borderRadius: 12, paddingVertical: 8, alignItems: 'center', backgroundColor: colors.accent }}><Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>{rtl.isRTL ? 'اشترك الآن' : 'Subscribe'}</Text></TouchableOpacity>}
             </View>
           );
         })}

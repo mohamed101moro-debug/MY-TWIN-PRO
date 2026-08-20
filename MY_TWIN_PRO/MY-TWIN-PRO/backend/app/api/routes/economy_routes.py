@@ -221,3 +221,25 @@ async def trial_start(uid: str = Depends(get_current_user_id)):
     return {"success": True, "expires_at": exp}
 
 logger.info("✅ Economy Routes v3 ready (strategic pricing + feature gating)")
+
+@router.post("/purchase/record")
+async def purchase_record(body: dict, uid: str = Depends(get_current_user_id)):
+    tier = str(body.get("tier") or "plus"); token = str(body.get("token") or ""); sku = str(body.get("sku") or "")
+    if tier not in ("plus","premium","pro","yearly"): raise HTTPException(400, "bad tier")
+    db = get_db()
+    # TODO(production): تحقق خادمي من token عبر Google Android Publisher قبل التفعيل.
+    try: db.table("profiles").update({"tier": tier}).eq("id", uid).execute()
+    except Exception: pass
+    return {"success": True, "tier": tier, "verified": token not in ("", "sandbox")}
+
+@router.post("/push-token")
+async def push_token(body: dict, uid: str = Depends(get_current_user_id)):
+    tok = str(body.get("token") or "")
+    if not tok: raise HTTPException(400, "no token")
+    db = get_db()
+    try:
+        db.table("user_devices").upsert({"user_id": uid, "device_id": tok[-12:], "push_token": tok}, on_conflict="user_id,device_id").execute()
+    except Exception:
+        try: db.table("user_devices").insert({"user_id": uid, "device_id": tok[-12:], "push_token": tok}).execute()
+        except Exception: pass
+    return {"success": True}

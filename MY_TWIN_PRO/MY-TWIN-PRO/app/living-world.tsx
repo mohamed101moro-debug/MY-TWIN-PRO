@@ -4,6 +4,7 @@ import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { apiPost, apiGet } from '../lib/httpClient';
+import { ADMOB } from '../lib/adConfig';
 import { useTwinBrain } from '../src/hooks/useTwinBrain';
 import { track, initAnalytics } from '../lib/analytics';
 import { useRTL } from '../lib/useRTL';
@@ -22,7 +23,7 @@ import { sensorContextEngine } from '../engine/sensor/SensorContextEngine';
 import { shareVision, sharedPresence } from '../engine/vision/VisionBridge';
 import { refreshPlace } from '../engine/place/PlaceBridge';
 import { useVoicePresence } from '../src/hooks/useVoicePresence';
-import ConsciousStage from '../src/components/conscious/ConsciousStage';
+import ConsciousBeing from '../src/components/conscious/ConsciousBeing';
 import SoulObservatory from '../src/world/SoulObservatory/SoulObservatory';
 import { Send, Mic, MicOff, Database, Eye, Heart, Sparkles, Target, Moon, X, Camera } from 'lucide-react-native';
 const { height } = Dimensions.get('window');
@@ -100,13 +101,14 @@ export default function LivingWorld() {
     if (msgCount.current % 6 !== 0) return;
     try {
       const g: any = require('react-native-google-mobile-ads');
-      const ad = g.InterstitialAd.createForAdRequest(g.TestIds.INTERSTITIAL, { requestNonPersonalizedAdsOnly: true });
+      const ad = g.InterstitialAd.createForAdRequest((ADMOB.useTest ? g.TestIds.INTERSTITIAL : ADMOB.androidInterstitial), { requestNonPersonalizedAdsOnly: true });
       const un = ad.addAdEventListener?.(g.AdEventType.LOADED, () => { try { ad.show(); } catch {} });
       ad.load();
       setTimeout(() => { try { un?.(); } catch {} }, 30000);
     } catch {}
   }, []);
   useEffect(() => { (async () => { try { const o: any = await apiGet('/api/economy/overview'); setGating(o?.gating || null); } catch {} })(); }, [userId]);
+  useEffect(() => { (async () => { try { const N: any = require('expo-notifications'); N.setNotificationHandler?.({ handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false }) }); const st = await N.getPermissionsAsync?.(); if (st?.granted !== true) await N.requestPermissionsAsync?.(); const tok = await N.getExpoPushTokenAsync?.(); if (tok?.data) await apiPost('/api/economy/push-token', { token: tok.data }); } catch {} })(); }, [userId]);
   useEffect(() => {
     if (!userId) return;
     let ws: WebSocket | null = null; let alive = true; let retry: any = null;
@@ -164,12 +166,12 @@ export default function LivingWorld() {
     light('intuition'); setIsThinking(true);
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
     try {
-      const response: any = await brain.sendMessage(text);
+      const enriched = (() => { try { return require('../engine/sensor/SensorContextEngine').sensorContextEngine.enrichMessage(text); } catch { return text; } })();
+      const response: any = await brain.sendMessage(enriched);
       const silence = Number(response?.silence_ms || 0);
       if (silence > 0) await new Promise(r => setTimeout(r, Math.min(silence, 3500)));
       setOnline(true); setDiag('');
       stateBus.patch({ ...buildPresencePatch(response), thinking: false });
-      stateBus.updateFromUnifiedResponse(response);
       const newEmotion = String(response?.twin_emotional_state?.current_emotion || response?.emotion || 'calm').toLowerCase();
       try {
         presenceEngine.setEmotion(newEmotion, Number(response?.intensity ?? 0.6));
@@ -238,7 +240,7 @@ export default function LivingWorld() {
   return (
     <KeyboardAvoidingView style={[styles.container, { backgroundColor: colors.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <TouchableOpacity activeOpacity={0.92} onPress={() => { try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft); } catch {} stateBus.patch({ touch: 1 }); setTimeout(() => stateBus.patch({ touch: 0 }), 900); }} onLongPress={() => { try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); } catch {} EventBus.emit('OPEN_SOUL_OBSERVATORY', {}); }} style={styles.entityWrapper}>
-        <ConsciousStage size={Math.min(height * 0.3, 280)} />
+        <ConsciousBeing size={Math.min(height * 0.3, 280)} />
       </TouchableOpacity>
       <View style={styles.capBlock}>
         <View style={styles.wingsRow}>

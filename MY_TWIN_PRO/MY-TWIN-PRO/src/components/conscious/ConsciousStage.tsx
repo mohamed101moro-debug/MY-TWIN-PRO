@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { presenceEngine } from '../../../engine/presence/PresenceEngine';
-import type { PresenceState } from '../../../engine/presence/PresenceTypes';
-import { useDeviceContext } from '../../../hooks/useDeviceContext';
+import { presenceEngine } from '../../core/PresenceBridge';
+import { useDeviceContext } from '../../hooks/useDeviceContext';
 import { ThemeColors } from '../../../engine/colors';
 import AwarenessBackground from './AwarenessBackground';
 import EntityWaveform from './EntityWaveform';
 import LivingEntity from './LivingEntity';
+import DigitalBeing from './DigitalBeing';
 import { presenceToEntity } from './useEntityState';
+import type { PresenceState } from '../../../engine/presence/PresenceTypes';
+/** ConsciousStage v5 — تناغم كامل: جو + جسد volumetric + موجة + وضع طاقة منخفضة + شبكات أمان. */
 const DARK = ThemeColors.dark;
-/** كيان احتياطي نباض (بدون SVG) — يظهر فقط إذا انهار الرسم الغني. */
 function FallbackBeing({ size }: { size: number }) {
   const p = useSharedValue(0);
   useEffect(() => { p.value = withRepeat(withTiming(1, { duration: 3200, easing: Easing.inOut(Easing.sin) }), -1, true); }, []);
@@ -25,7 +26,7 @@ function FallbackBeing({ size }: { size: number }) {
 class LayerBoundary extends React.Component<{ name: string; fallback: React.ReactNode; children: React.ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
-  componentDidCatch(e: any) { try { console.warn('[STAGE-LAYER]', this.props.name, String(e?.message)); } catch {} }
+  componentDidCatch(e: any) { try { console.warn('[STAGE]', this.props.name, String(e?.message)); } catch {} }
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 export default function ConsciousStage({ size = 280 }: { size?: number }) {
@@ -44,19 +45,20 @@ export default function ConsciousStage({ size = 280 }: { size?: number }) {
     const un = presenceEngine.subscribe((s) => setPres({ ...s }));
     return () => { un(); };
   }, []);
+  const lowPower = dev.batteryLevel < 0.2 && !dev.isCharging;
   const state = presenceToEntity(pres);
-  const energy = pres?.energy ?? 0.5;
-  const nightBoost = dev.environmentMode === 'night' ? 0.08 : 0;
-  const batteryCalm = dev.batteryLevel < 0.2 ? 0.25 : 0;
-  const intensity = Math.max(0.35, Math.min(1.15, 0.55 + energy * 0.45 + nightBoost - batteryCalm));
+  const env = { light: 0.5, noise: 0, motion: 0, listening: !!pres?.listening, camera: false, userNear: !!pres?.userPresent };
   return (
     <View style={[styles.wrap, { backgroundColor: DARK.bg }]} pointerEvents="box-none">
       <LayerBoundary name="background" fallback={<View style={StyleSheet.absoluteFill} />}>
-        <AwarenessBackground dark intensity={intensity * Math.max(0.25, awaken)} speaking={!!pres?.speaking} />
+        <AwarenessBackground dark intensity={(0.5 + (pres?.energy ?? 0.5) * 0.5) * Math.max(0.25, awaken)} speaking={!!pres?.speaking} />
       </LayerBoundary>
       <Animated.View style={[styles.center, birthStyle]} pointerEvents="box-none">
         <LayerBoundary name="entity" fallback={<FallbackBeing size={size} />}>
-          <LivingEntity state={state} size={size} intensity={Math.max(0.4, Math.min(1, intensity))} speaking={!!pres?.speaking} />
+          {pres ? (lowPower
+            ? <LivingEntity state={state} size={size} intensity={0.6} speaking={!!pres.speaking} />
+            : <DigitalBeing presence={pres} size={size} isDark env={env} maturity={0.85} awaken={awaken} />)
+            : <FallbackBeing size={size} />}
         </LayerBoundary>
       </Animated.View>
       <View style={styles.wave} pointerEvents="none">

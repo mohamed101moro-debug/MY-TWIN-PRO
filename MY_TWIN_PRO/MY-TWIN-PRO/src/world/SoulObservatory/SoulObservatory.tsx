@@ -31,6 +31,7 @@ const WINGS = [
   { id: 'capabilities', icon: Grid3X3, label_ar: 'الغرف', label_en: 'Capabilities', component: CapabilitiesWing, color: '#F59E0B' },
   { id: 'settings', icon: Settings, label_ar: 'الإعدادات', label_en: 'Settings', component: SettingsWing, color: '#6B7280' },
   { id: 'about', icon: Info, label_ar: 'عن التوأم', label_en: 'About', component: AboutWing, color: '#6366F1' },
+          <TouchableOpacity onPress={() => { try { require('react-native').Linking.openURL('https://sirmarket7-cloud.github.io/Soul-Sync/index.html'); } catch {} }} style={{ marginTop: 10 }}><Text style={{ color: '#9B6FFF', fontSize: 12 }}>🌐 Soul-Sync — صفحة الشركة</Text></TouchableOpacity>
   { id: 'help', icon: HelpCircle, label_ar: 'المساعدة', label_en: 'Help', component: HelpWing, color: '#14B8A6' },
   // Universe Layer
   { id: 'twinplus', icon: Crown, label_ar: 'My Twin+', label_en: 'My Twin+', component: TwinPlusWing, color: '#EC4899' },
