@@ -83,7 +83,8 @@
       ],
       "./plugins/withGooglePlayBilling",
       "expo-camera",
-      "expo-sensors"
+      "expo-sensors",
+      "./plugins/withAndroidCoreCap"
     ],
     "extra": {
       "router": {

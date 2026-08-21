@@ -17,7 +17,7 @@ const withBillingGradle = (config) => {
     if (cfg.modResults.contents.includes('billing-ktx')) return cfg;
     cfg.modResults.contents = cfg.modResults.contents.replace(
       /dependencies\s*\{/,
-      `dependencies {\n    implementation 'com.android.billingclient:billing-ktx:7.1.1'`
+      `dependencies {\n    implementation 'com.android.billingclient:billing-ktx:6.2.1'`
     );
     return cfg;
   });
