@@ -4,6 +4,7 @@ import { View, StyleSheet } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { presenceEngine } from '../../core/PresenceBridge';
 import { useDeviceContext } from '../../hooks/useDeviceContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeColors } from '../../../engine/colors';
 import AwarenessBackground from './AwarenessBackground';
 import EntityWaveform from './EntityWaveform';
@@ -34,6 +35,8 @@ export default function ConsciousStage({ size = 280 }: { size?: number }) {
   const [pres, setPres] = useState<PresenceState | null>(null);
   const [awaken, setAwaken] = useState(0);
   const dev = useDeviceContext();
+  const [safe, setSafe] = useState(false);
+  useEffect(() => { (async () => { try { const v = await AsyncStorage.getItem('mytwin_safe_mode'); if (v === '1') setSafe(true); } catch {} })(); }, []);
   const birth = useSharedValue(0);
   useEffect(() => {
     birth.value = withTiming(1, { duration: 2200, easing: Easing.out(Easing.cubic) });
@@ -56,7 +59,7 @@ export default function ConsciousStage({ size = 280 }: { size?: number }) {
       </LayerBoundary>
       <Animated.View style={[styles.center, birthStyle]} pointerEvents="box-none">
         <LayerBoundary name="entity" fallback={<FallbackBeing size={size} />}>
-          {pres ? (lowPower
+          {pres ? (safe || lowPower
             ? <LivingEntity state={state} size={size} intensity={0.6} speaking={!!pres.speaking} />
             : <DigitalBeing presence={pres} size={size} isDark env={env} maturity={0.85} awaken={awaken} />)
             : <FallbackBeing size={size} />}

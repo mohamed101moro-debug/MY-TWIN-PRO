@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { apiPost, apiGet } from '../lib/httpClient';
 import { ADMOB } from '../lib/adConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTwinBrain } from '../src/hooks/useTwinBrain';
 import { track, initAnalytics } from '../lib/analytics';
 import { useRTL } from '../lib/useRTL';
@@ -70,6 +71,7 @@ export default function LivingWorld() {
   const [diag, setDiag] = useState('');
   const [tele, setTele] = useState<{ n: number; hb: number | null } | null>(null);
   const [gating, setGating] = useState<any>(null);
+  useEffect(() => { const t = setTimeout(() => { try { AsyncStorage.removeItem('mytwin_safe_mode'); } catch {} }, 60000); return () => clearTimeout(t); }, []);
   const msgCount = useRef(0);
   const wingT = useRef<any>(null); const scrollRef = useRef<ScrollView>(null);
   const brain = useTwinBrain(userId, lang);

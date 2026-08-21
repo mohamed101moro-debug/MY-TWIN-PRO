@@ -46,6 +46,7 @@ export default function RootLayout() {
           const c = JSON.parse(raw);
           await AsyncStorage.removeItem(CRASH_KEY);
           if (Date.now() - (c.t || 0) < 10 * 60 * 1000) {
+              try { await AsyncStorage.setItem('mytwin_safe_mode', '1'); } catch {}
             Alert.alert('تشخيص الكراش الأخير', `${c.m}\n---\n${c.s}`);
           }
         }
