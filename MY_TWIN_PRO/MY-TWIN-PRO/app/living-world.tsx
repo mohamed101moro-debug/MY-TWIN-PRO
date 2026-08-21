@@ -5,7 +5,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { apiPost, apiGet } from '../lib/httpClient';
 import { ADMOB } from '../lib/adConfig';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTwinBrain } from '../src/hooks/useTwinBrain';
 import { track, initAnalytics } from '../lib/analytics';
 import { useRTL } from '../lib/useRTL';
