@@ -58,6 +58,9 @@ export class PresenceEngine {
   private micro: { type: string; intensity: number; ts: number } | null = null;
   private echoTs = 0;
   private wanderSeed = Math.random() * 100;
+  private conv: PresenceState['conversationState'] = 'idle';
+  private prevThinking = false;
+  private lastThinkEnd = 0;
 
   // ── العقد العام ──
   start(): void {
@@ -148,6 +151,15 @@ export class PresenceEngine {
     if (microType === 'head_nod') { warmth = c01(warmth + 0.15); attention = c01(attention + 0.1); }
     if (microType === 'membrane_shiver') turbulence = c01(turbulence + 0.18);
     if (echo) anticipation = c01(anticipation + 0.2);
+    // conversation machine: IDLE→LISTENING→PROCESSING→UNDERSTANDING→RESPONDING→IDLE
+    if (!!bus.thinking) { this.conv = 'processing'; }
+    else if (!!bus.listening) { this.conv = 'listening'; }
+    else if (!!bus.speaking) { this.conv = 'responding'; }
+    else {
+      if (this.prevThinking && !bus.thinking) this.lastThinkEnd = now;
+      this.conv = (this.lastThinkEnd && now - this.lastThinkEnd < 1200) ? 'understanding' : 'idle';
+    }
+    this.prevThinking = !!bus.thinking;
 
     this.state = {
       ...this.state,
@@ -157,6 +169,7 @@ export class PresenceEngine {
       voiceLevel: c01(bus.voiceLevel), speaking: !!bus.speaking, listening: !!bus.listening, thinking: !!bus.thinking,
       userPresent: !!bus.userPresent,
       micro: microFresh ? microType : undefined,
+      conversationState: this.conv,
     };
 
     // 7) إشعار 5Hz أو عند حدث
@@ -167,6 +180,13 @@ export class PresenceEngine {
     }
   }
 
+  reset(): void {
+    this.state = { ...BASELINE };
+    this.fromProfile = EMOTION_PROFILES.calm; this.toProfile = EMOTION_PROFILES.calm;
+    this.blendStart = 0; this.intensityVal = 0.6; this.lastSetEmotionTs = 0;
+    this.micro = null; this.echoTs = 0; this.conv = 'idle'; this.prevThinking = false; this.lastThinkEnd = 0;
+    this.dirty = true;
+  }
   startPresenceLoop(): void { this.start(); }
   stopPresenceLoop(): void { this.stop(); }
   applyLifeRhythm(): void {

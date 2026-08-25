@@ -55,7 +55,8 @@ export interface PresenceState {
 
   // ── البيئة/الحضور ──
   userPresent?: boolean;      // المستخدم قريب (وجه/لمس)
-  micro?: string;             // تعبير دقيق عابر (head_nod/membrane_shiver)
+  micro?: string;
+  conversationState?: 'idle' | 'listening' | 'processing' | 'understanding' | 'responding';             // تعبير دقيق عابر (head_nod/membrane_shiver)
 }
 
 /** alias توثيقي للكيان الحي v2 — نفس العقد، كل الحقول اختيارية */
