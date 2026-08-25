@@ -15,6 +15,7 @@ export default function Index() {
   const nameStyle = useAnimatedStyle(() => ({ opacity: nameO.value * brandExit.value }));
   const fadeStyle = useAnimatedStyle(() => ({ opacity: exitO.value }));
   useEffect(() => {
+    let alive = true;
     const play = (e: string) => { try { audioMixer.playEffect(e); } catch {} };
     stateBus.patch({ energy: 0.35, curiosity: 0.4 });
     const seq = async () => {

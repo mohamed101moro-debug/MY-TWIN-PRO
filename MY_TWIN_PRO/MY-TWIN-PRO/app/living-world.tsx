@@ -30,6 +30,7 @@ const getSharedPlace = (): string => { try { return require('../engine/vision/Vi
 const enrich = (text: string): string => { try { return require('../engine/sensor/SensorContextEngine').sensorContextEngine.enrichMessage(text); } catch { return text; } };
 
 const { height } = Dimensions.get('window');
+const withTimeout = <T,>(pr: Promise<T>, ms = 20000): Promise<T> => Promise.race([pr, new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 const clamp01 = (n: number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0.5));
 
 const WINGS = [
@@ -129,8 +130,8 @@ export default function LivingWorld() {
       try {
         const s: any = devicePresenceEngine.getSensors();
         const rawL = s.lightLevel;
-        const lightN = rawL == null ? 0.5 : (rawL > 1 ? clamp01(Math.log10(Math.max(1, rawL) + 1) / 3) : clamp01(rawL));
-        stateBus.patch({ ambientLight: lightN, movement: s.userWalking ? 0.7 : s.userStationary ? 0 : 0.3, proximity: s.faceDetected ? 0.85 : 0.5, userPresent: !!s.faceDetected });
+        const lightN = rawL == null ? 0.5 : (rawL > 1 ? clamp01(Math.log10(Math.max(1, rawL) + 1) / 4) : clamp01(rawL));
+        stateBus.patch({ ambientLight: lightN, movement: s.userWalking ? 0.7 : s.userStationary ? 0 : 0.3, proximity: s.faceDetected ? 0.85 : 0.5, userPresent: !!s.faceDetected, night: !!s.isNightTime });
       } catch {}
     }, 600);
     return () => clearInterval(iv);
@@ -310,7 +311,7 @@ export default function LivingWorld() {
 
   const handleVision = useCallback(async () => {
     if (isVisioning) return;
-    setIsVisioning(true); stateBus.patch({ thinking: true });
+    setIsVisioning(true); stateBus.patch({ thinking: true, camera: true });
     try {
       const r = await safeShareVision(userId, lang);
       if (r) {
@@ -318,7 +319,7 @@ export default function LivingWorld() {
         setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'twin', text: `👁 ${r.scene}${r.place ? `\n📍 ${r.place}` : ''}` }]);
         light('intuition'); light('memory');
         try { getVoice()?.speak?.(r.scene, 'curious'); } catch {}
-        stateBus.patch({ curiosity: 0.85, thinking: false });
+        stateBus.patch({ curiosity: 0.85, thinking: false, camera: false });
       }
     } catch (e: any) {
       setDiag('VISION: ' + String(e?.message || e).slice(0, 60));
