@@ -39,7 +39,7 @@ const BASELINE: PresenceState = {
 
 type Listener = (s: PresenceState) => void;
 
-class PresenceEngine {
+export class PresenceEngine {
   private listeners = new Set<Listener>();
   private state: PresenceState = { ...BASELINE };
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -165,6 +165,17 @@ class PresenceEngine {
       const snap = this.getSnapshot();
       this.listeners.forEach((l) => { try { l(snap); } catch {} });
     }
+  }
+
+  startPresenceLoop(): void { this.start(); }
+  stopPresenceLoop(): void { this.stop(); }
+  applyLifeRhythm(): void {
+    try {
+      const st: any = (stateBus as any).getState ? (stateBus as any).getState() : {};
+      const e = Math.max(0, Math.min(1, Number(st.energy ?? 0.55)));
+      (this as any).state = { ...((this as any).state || {}), breathing: Math.max(0.15, Math.min(1, 0.3 + e * 0.4)), pulse: Math.max(0.15, Math.min(1, 0.3 + e * 0.5)) };
+      (this as any).dirty = true;
+    } catch {}
   }
 }
 

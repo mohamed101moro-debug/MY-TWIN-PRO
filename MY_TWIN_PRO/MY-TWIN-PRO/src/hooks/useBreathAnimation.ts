@@ -1,45 +1,23 @@
+import { useEffect } from 'react';
+import { useSharedValue, withRepeat, withSequence, withTiming, Easing } from 'react-native-reanimated';
 /**
- * useBreathAnimation — Hook موحد للتنفس
- * ========================================
- * يقرأ breathPhase من StateBus الجديد
- * ويُنتج قيماً جاهزة للاستخدام في أي Renderer.
+ * useBreathAnimation v2 — طور تنفس مشترك (SharedValue)
+ * - يُمرر للطبقات (OrganicMembrane/EnergyCore/EmotionalAura…) فتتنفس بإيقاع واحد ⇒ كيان واحد.
+ * - فترة قابلة للضبط + تصفير عند الفك ⇒ لا حركة يتيمة بعد unmount.
  */
-
-import { useEffect, useState } from 'react';
-import { StateBus, BreathState } from '../core/StateBus';
-import { usePresence } from './usePresence';
-
-interface BreathAnimation {
-  phase: number;        // 0 → 1 → 0 (sine)
-  intensity: number;    // 0.0 → 1.0
-  duration: number;     // ms
-  isHolding: boolean;
-  scale: number;        // جاهز للاستخدام في transform
-  opacity: number;      // جاهز للاستخدام في opacity
-}
-
-export function useBreathAnimation(): BreathAnimation {
-  const { presenceLevel } = usePresence();
-  const [breath, setBreath] = useState<BreathState>(() => StateBus.select(s => s.breath));
-
+export function useBreathAnimation(periodMs = 3000) {
+  const breathPhase = useSharedValue(0);
   useEffect(() => {
-    const unsub = StateBus.subscribeTo(
-      (s) => s.breath,
-      (state) => setBreath({ ...state })
+    breathPhase.value = withRepeat(
+      withSequence(
+        withTiming(0, { duration: 0 }),
+        withTiming(Math.PI * 2, { duration: periodMs, easing: Easing.inOut(Easing.sin) })
+      ),
+      -1,
+      false
     );
-    return unsub;
-  }, []);
-
-  // تحويل breathPhase إلى قيم جاهزة للـ Renderer
-  const scale = 0.88 + breath.phase * 0.12;        // 0.88 → 1.0
-  const opacity = 0.2 + breath.phase * 0.4 + presenceLevel * 0.03;
-
-  return {
-    phase: breath.phase,
-    intensity: breath.intensity,
-    duration: breath.duration,
-    isHolding: breath.isHolding,
-    scale,
-    opacity: Math.min(1, opacity),
-  };
+    return () => { breathPhase.value = 0; };
+  }, [periodMs]);
+  return breathPhase;
 }
+export default useBreathAnimation;
