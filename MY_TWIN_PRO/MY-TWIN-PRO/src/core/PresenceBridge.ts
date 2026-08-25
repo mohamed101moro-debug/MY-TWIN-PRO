@@ -51,3 +51,13 @@ class PresenceBridge {
   }
 }
 export const presenceBridge = new PresenceBridge();
+
+/**
+ * جدول توحيد الأحداث (EventBus × StateBus) — نقطة الدمج الوحيدة:
+ * AI_START_THINKING  → thinking:true + focus↑ + arousal↑
+ * AI_FINISH_THINKING → thinking:false
+ * USER_SEND_MESSAGE  → listening:true (3ث)
+ * MEMORY_SURFACED    → memoryLevel:0.85 + curiosity↑ + emotionValence(bias)
+ * MEMORY_CREATED     → memoryLevel+0.12
+ * لا يُسمح لأي مكوّن بصري بالاشتراك في EventBus مباشرة — الكل يقرأ StateBus/PresenceState.
+ */

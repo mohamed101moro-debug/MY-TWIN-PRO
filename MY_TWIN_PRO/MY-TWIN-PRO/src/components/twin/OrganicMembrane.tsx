@@ -1,5 +1,5 @@
 // @ts-nocheck
-/** OrganicMembrane v2 (Skia) — وجه بيضاوي عضوي: 7 أغشية + Fill شفاف، prop-driven بلا حياة مستقلة */
+/** OrganicMembrane v2.1 — طور تنفس موحّد (bp) + فواصل مسارات سليمة */
 import React from 'react';
 import { Path } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
@@ -7,9 +7,7 @@ const sf = (n: number, fb = 0) => { 'worklet'; return Number.isFinite(n) ? n : f
 const cl = (n: number, a = 0, b = 1) => { 'worklet'; const v = Number.isFinite(n) ? n : a; return Math.max(a, Math.min(b, v)); };
 const organic = (x: number, y: number, t: number) => {
   'worklet';
-  return Math.sin(x * 7.3 + y * 1.3 + t * 0.3) * 0.5 +
-    Math.sin(x * 13.7 - y * 0.7 + t * 0.17) * 0.3 +
-    Math.sin(x * 29.1 + y * 2.1 - t * 0.11) * 0.2;
+  return Math.sin(x * 7.3 + y * 1.3 + t * 0.3) * 0.5 + Math.sin(x * 13.7 - y * 0.7 + t * 0.17) * 0.3 + Math.sin(x * 29.1 + y * 2.1 - t * 0.11) * 0.2;
 };
 const facePoint = (a: number, W: number, H: number) => {
   'worklet';
@@ -17,20 +15,18 @@ const facePoint = (a: number, W: number, H: number) => {
   const chin = s > 0 ? 1 - 0.22 * s * s : 1;
   return { x: c * W * chin, y: s * H };
 };
-const membranePath = (cx: number, cy: number, W: number, H: number, scale: number, t: number, speed: number, turb: number, breath: number, pulse: number, tilt: number, layer: number): string => {
+const membranePath = (cx: number, cy: number, W: number, H: number, scale: number, t: number, bph: number, speed: number, turb: number, breath: number, pulse: number, tilt: number, layer: number): string => {
   'worklet';
   const pts = 64; let d = '';
   const phase = t * speed * (0.8 + layer * 0.13);
-  const br = 1 + Math.sin(t * 0.65 * breath) * 0.022 * breath;
+  const br = 1 + Math.sin(bph) * 0.022 * breath;
   const pls = Math.max(0, Math.sin(t * 2.4 * pulse)) * 0.018 * pulse;
   const tl = cl(tilt, 0.2, 0.95);
   for (let i = 0; i <= pts; i++) {
     const a = (i / pts) * Math.PI * 2;
     const fr = facePoint(a, W * scale, H * scale);
     const nn = organic(Math.cos(a) * 1.3, Math.sin(a) * 1.3, phase) * turb * 0.07 * scale * W;
-    const wob = Math.sin(a * 3 + phase * 1.6) * turb * 0.05 * scale * W +
-      Math.cos(a * 5 - phase) * turb * 0.03 * scale * W +
-      Math.sin(a * 7 + phase * 0.5) * turb * 0.012 * scale * W;
+    const wob = Math.sin(a * 3 + phase * 1.6) * turb * 0.05 * scale * W + Math.cos(a * 5 - phase) * turb * 0.03 * scale * W + Math.sin(a * 7 + phase * 0.5) * turb * 0.012 * scale * W;
     const x = cx + fr.x + (fr.x / (W * scale || 1)) * (nn + wob);
     const y = cy + fr.y * tl + (fr.y / (H * scale || 1)) * (nn + wob);
     d += `${i === 0 ? 'M' : 'L'} ${sf(x, cx).toFixed(2)} ${sf(y, cy).toFixed(2)} `;
@@ -40,14 +36,15 @@ const membranePath = (cx: number, cy: number, W: number, H: number, scale: numbe
 export default function OrganicMembrane(p: any) {
   const { t, cx, cy, W, H } = p;
   const tr = p.transparency ?? 0;
-  const m1 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.00 * p.fieldR.value, sf(t.value), 0.90, p.turb.value, p.breath.value, p.pulse.value, p.tiltV.value, 0));
-  const m2 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.12 * p.fieldR.value, sf(t.value), 0.78, p.turb.value, p.breath.value, p.pulse.value, p.tiltV.value * 0.94, 1));
-  const m3 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.26 * p.fieldR.value, sf(t.value), 0.66, p.turb.value * 0.88, p.breath.value, p.pulse.value, p.tiltV.value * 0.88, 2));
-  const m4 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.42 * p.fieldR.value, sf(t.value), 0.55, p.turb.value * 0.76, p.breath.value, p.pulse.value, p.tiltV.value * 0.82, 3));
-  const m5 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.60 * p.fieldR.value, sf(t.value), 0.45, p.turb.value * 0.64, p.breath.value, p.pulse.value, p.tiltV.value * 0.76, 4));
-  const m6 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.78 * p.fieldR.value, sf(t.value), 0.36, p.turb.value * 0.52, p.breath.value, p.pulse.value, p.tiltV.value * 0.70, 5));
-  const m7 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.96 * p.fieldR.value, sf(t.value), 0.28, p.turb.value * 0.40, p.breath.value, p.pulse.value, p.tiltV.value * 0.64, 6));
-  const fillInner = useDerivedValue(() => membranePath(cx, cy, W, H, 0.95 * p.fieldR.value, sf(t.value), 0.80, p.turb.value * 0.7, p.breath.value, p.pulse.value, p.tiltV.value * 0.96, 0.3));
+  const bphOf = () => { 'worklet'; return p.bp ? p.bp.value : sf(t.value) * 0.65 * p.breath.value; };
+  const m1 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.00 * p.fieldR.value, sf(t.value), bphOf(), 0.90, p.turb.value, p.breath.value, p.pulse.value, p.tiltV.value, 0));
+  const m2 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.12 * p.fieldR.value, sf(t.value), bphOf(), 0.78, p.turb.value, p.breath.value, p.pulse.value, p.tiltV.value * 0.94, 1));
+  const m3 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.26 * p.fieldR.value, sf(t.value), bphOf(), 0.66, p.turb.value * 0.88, p.breath.value, p.pulse.value, p.tiltV.value * 0.88, 2));
+  const m4 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.42 * p.fieldR.value, sf(t.value), bphOf(), 0.55, p.turb.value * 0.76, p.breath.value, p.pulse.value, p.tiltV.value * 0.82, 3));
+  const m5 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.60 * p.fieldR.value, sf(t.value), bphOf(), 0.45, p.turb.value * 0.64, p.breath.value, p.pulse.value, p.tiltV.value * 0.76, 4));
+  const m6 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.78 * p.fieldR.value, sf(t.value), bphOf(), 0.36, p.turb.value * 0.52, p.breath.value, p.pulse.value, p.tiltV.value * 0.70, 5));
+  const m7 = useDerivedValue(() => membranePath(cx, cy, W, H, 1.96 * p.fieldR.value, sf(t.value), bphOf(), 0.28, p.turb.value * 0.40, p.breath.value, p.pulse.value, p.tiltV.value * 0.64, 6));
+  const fillInner = useDerivedValue(() => membranePath(cx, cy, W, H, 0.95 * p.fieldR.value, sf(t.value), bphOf(), 0.80, p.turb.value * 0.7, p.breath.value, p.pulse.value, p.tiltV.value * 0.96, 0.3));
   const awake = useDerivedValue(() => cl(0.3 + p.awakenV.value * 0.7));
   const clear = useDerivedValue(() => cl(1 - tr * 0.5));
   const o1 = useDerivedValue(() => cl(0.60 + p.energy.value * 0.22) * awake.value * clear.value);

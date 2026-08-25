@@ -1,11 +1,11 @@
 // @ts-nocheck
-/** MicroParticles v3.1 — جسيمات مرتبطة بالحالة: سرعة/اتجاه/اضطراب حسب الشعور + إبطاء تركيز + فئة أداء */
+/** MicroParticles v3.1 — سلوك حركي عاطفي + إبطاء تركيز + فئة أداء + فواصل مسارات سليمة */
 import React from 'react';
 import { Path, BlurMask, Group } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
 const sf = (n: number, fb = 0) => { 'worklet'; return Number.isFinite(n) ? n : fb; };
 const cl = (n: number, a = 0, b = 1) => { 'worklet'; const v = Number.isFinite(n) ? n : a; return Math.max(a, Math.min(b, v)); };
-const EM = {
+const EM: Record<string, { sp: number; rd: number; jt: number }> = {
   happy: { sp: 1.25, rd: 1.15, jt: 0 }, curious: { sp: 1.1, rd: 1.1, jt: 0 },
   thinking: { sp: 0.7, rd: 0.85, jt: 0 }, sad: { sp: 0.5, rd: 0.7, jt: 0 },
   surprised: { sp: 1.4, rd: 1.25, jt: 0.5 }, angry: { sp: 1.5, rd: 0.9, jt: 1 },

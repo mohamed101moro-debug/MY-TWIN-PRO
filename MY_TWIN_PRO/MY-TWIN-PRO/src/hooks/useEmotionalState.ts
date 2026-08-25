@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react';
 import { stateBus } from '../core/StateBus';
 import { valenceToEmotion } from '../../engine/presence/EmotionToVisualMapper';
 /**
- * useEmotionalState v2.3 — يعيد كائن المشاعر نفسه مباشرة (العقد التاريخي):
- *   const emotion = useEmotionalState(); emotion.valence === 'positive' …
- * مع مراجع ذاتية (emotion/emotionalState) لأي نمط تفكيك، وحقول رقمية حية.
+ * useEmotionalState v2.4 — نفس عقد v2.3 + subscribeKeys بدل الاستطلاع (Low: أداء)
  */
 export interface EmotionView {
   valence: 'positive' | 'negative' | 'neutral';
@@ -15,23 +13,17 @@ export interface EmotionView {
   focus: number;
   curiosity: number;
   key: string;
-  emotion: EmotionView;          // مرجع ذاتي (للمفكِّكين)
-  emotionalState: EmotionView;   // مرجع ذاتي (للمفكِّكين)
+  emotion: EmotionView;
+  emotionalState: EmotionView;
 }
 function buildView(v: number, a: number, f: number, cur: number, primary: string): EmotionView {
   const key = valenceToEmotion(v, a, f, false);
   const view: any = {
     valence: v > 0.15 ? 'positive' : v < -0.15 ? 'negative' : 'neutral',
-    valenceNumber: v,
-    intensity: a,
-    primaryEmotion: primary || key,
-    arousal: a,
-    focus: f,
-    curiosity: cur,
-    key,
+    valenceNumber: v, intensity: a, primaryEmotion: primary || key,
+    arousal: a, focus: f, curiosity: cur, key,
   };
-  view.emotion = view;
-  view.emotionalState = view;
+  view.emotion = view; view.emotionalState = view;
   return view as EmotionView;
 }
 export function useEmotionalState(): EmotionView {
@@ -45,8 +37,7 @@ export function useEmotionalState(): EmotionView {
       setView(buildView(v, a, f, Number(st.curiosity ?? 0.45), String(st.emotion?.primaryEmotion ?? '')));
     };
     read();
-    const iv = setInterval(read, 400);
-    return () => clearInterval(iv);
+    return stateBus.subscribeKeys(['emotionValence', 'arousal', 'focus', 'curiosity', 'emotion'], read);
   }, []);
   return view;
 }
