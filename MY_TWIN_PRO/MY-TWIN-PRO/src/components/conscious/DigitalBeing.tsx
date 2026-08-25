@@ -1,12 +1,11 @@
 // @ts-nocheck
 /**
- * DigitalBeing v6.2 — Orchestrator/Composition Root
- * ==================================================
- * يركّب الطبقات الست المكوّناتية (لا منطق مكرر) + قرص كوزمي + فم ناطق.
- * مصدر الحقيقة واحد: PresenceState (من المحرك) ⇒ SharedValues ⇒ كل الطبقات.
- * كل المساعدات 'worklet' (إصلاح جذر الكراش التاريخي).
- * perf tier: بطارية/شاشة ⇒ عدد جسيمات متكيف (لا تضحية بالاستقرار).
- * العقد الخارجي محفوظ حرفيًا (presence/size/isDark/env/maturity/userNear/awaken).
+ * DigitalBeing v6.2 — Orchestrator/Composition Root (الكيان الحي الكامل)
+ * ======================================================================
+ * P0: كل المساعدات 'worklet' (إصلاح جذر الكراش) + يركّب الطبقات الست + قرص كوزمي + فم ناطق.
+ * P1: perf-tier (بطارية/شاشة) + ألوان عبر useMemo خارج منطق الرندرة المتكرر.
+ * توقيت منطقي مشترك: useBreathAnimation ⇒ bp يمر للغشاء/النواة/الهالة (كيان واحد).
+ * مصدر الحقيقة واحد: PresenceState ⇒ SharedValues ⇒ كل الطبقات (لا state محلي موازٍ).
  */
 import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
@@ -15,6 +14,7 @@ import { useSharedValue, useFrameCallback, useDerivedValue, withTiming, cancelAn
 import type { PresenceState, RGB } from '../../../engine/presence/PresenceTypes';
 import { getProfile } from '../../../engine/presence/EmotionToVisualMapper';
 import { devicePresenceEngine } from '../../../engine/device/DevicePresenceEngine';
+import { useBreathAnimation } from '../../hooks/useBreathAnimation';
 import AdaptiveHalo from '../twin/AdaptiveHalo';
 import EmotionalAura from '../twin/EmotionalAura';
 import OrganicMembrane from '../twin/OrganicMembrane';
@@ -44,7 +44,7 @@ export default function DigitalBeing({ presence, size = 360, isDark = true, env,
   const E = presence?.eyeColor ?? { r: 232, g: 222, b: 255 };
   const prof = getProfile(String(presence?.emotion ?? 'calm'));
 
-  // perf tier (مرة واحدة): بطارية منخفضة/شاشة صغيرة ⇒ جسيمات أقل
+  // perf tier مرة واحدة (بطارية/شاشة) ⇒ استقرار أولًا
   const perf = useMemo(() => {
     try {
       const b = devicePresenceEngine.getSensors().deviceBattery ?? 100;
@@ -52,6 +52,21 @@ export default function DigitalBeing({ presence, size = 360, isDark = true, env,
       return b < 25 || w < 400 ? 0.5 : b < 60 ? 0.8 : 1;
     } catch { return 0.8; }
   }, []);
+
+  // ألوان خارج منطق الرندرة المتكرر
+  const mul = isDark ? 1 : 0.78;
+  const C = useMemo(() => ({
+    core0: rgba(A, isDark ? 0.95 : 0.82, mul), core1: rgba(B, isDark ? 0.55 : 0.42, mul), core2: rgba(A, 0, mul),
+    halo0: rgba(A, isDark ? 0.42 : 0.32, mul), halo1: rgba(B, isDark ? 0.22 : 0.16, mul),
+    fill: rgba(A, isDark ? 0.06 : 0.04, mul),
+    m1: rgba(B, isDark ? 0.72 : 0.56, mul), m2: rgba(A, isDark ? 0.58 : 0.44, mul), m3: rgba(B, isDark ? 0.48 : 0.36, mul),
+    m4: rgba(A, isDark ? 0.38 : 0.28, mul), m5: rgba(B, isDark ? 0.30 : 0.22, mul), m6: rgba(A, isDark ? 0.22 : 0.16, mul), m7: rgba(B, isDark ? 0.16 : 0.11, mul),
+    sweep0: rgba(B, isDark ? 0.28 : 0.18, mul), sweep1: rgba(A, isDark ? 0.28 : 0.18, mul),
+    particle: rgba(B, isDark ? 0.55 : 0.35, mul),
+    eyeFill: rgba(E, isDark ? 0.95 : 0.88, mul), eyeStroke: rgba(B, isDark ? 0.88 : 0.72, mul), brow: rgba(A, isDark ? 0.55 : 0.42, mul),
+    voiceC: rgba(B, isDark ? 0.35 : 0.22, mul), listenC: rgba(A, isDark ? 0.28 : 0.18, mul), outer: rgba(A, isDark ? 0.14 : 0.09, mul),
+    irisA: rgba(E, 0.95, mul), irisB: rgba(B, 0.8, mul), mouth: '#E6D9FF',
+  }), [A?.r, A?.g, A?.b, B?.r, B?.g, B?.b, E?.r, E?.g, E?.b, isDark]);
 
   const t = useSharedValue(0);
   const energy = useSharedValue(cl(presence?.energy ?? 0.55));
@@ -72,6 +87,7 @@ export default function DigitalBeing({ presence, size = 360, isDark = true, env,
   const voice = useSharedValue(cl(presence?.voiceLevel ?? 0));
   const awakenV = useSharedValue(cl(awaken));
   const conv = useSharedValue(0);
+  const bp = useBreathAnimation(3000);
   useFrameCallback((f) => { 'worklet'; t.value = sf(f.timeSinceFirstFrame, 0) / 1000; });
   useEffect(() => () => { cancelAnimation(t); cancelAnimation(energy); }, []);
 
@@ -104,22 +120,9 @@ export default function DigitalBeing({ presence, size = 360, isDark = true, env,
   const mouthO = useDerivedValue(() => cl(0.45 + voice.value * 0.4) * cl(0.2 + awakenV.value * 0.8));
   const discO = useDerivedValue(() => 0.94 * awakenV.value);
 
-  const mul = isDark ? 1 : 0.78;
-  const C = {
-    core0: rgba(A, isDark ? 0.95 : 0.82, mul), core1: rgba(B, isDark ? 0.55 : 0.42, mul), core2: rgba(A, 0, mul),
-    halo0: rgba(A, isDark ? 0.42 : 0.32, mul), halo1: rgba(B, isDark ? 0.22 : 0.16, mul),
-    fill: rgba(A, isDark ? 0.06 : 0.04, mul),
-    m1: rgba(B, isDark ? 0.72 : 0.56, mul), m2: rgba(A, isDark ? 0.58 : 0.44, mul), m3: rgba(B, isDark ? 0.48 : 0.36, mul),
-    m4: rgba(A, isDark ? 0.38 : 0.28, mul), m5: rgba(B, isDark ? 0.30 : 0.22, mul), m6: rgba(A, isDark ? 0.22 : 0.16, mul), m7: rgba(B, isDark ? 0.16 : 0.11, mul),
-    sweep0: rgba(B, isDark ? 0.28 : 0.18, mul), sweep1: rgba(A, isDark ? 0.28 : 0.18, mul),
-    particle: rgba(B, isDark ? 0.55 : 0.35, mul),
-    eyeFill: rgba(E, isDark ? 0.95 : 0.88, mul), eyeStroke: rgba(B, isDark ? 0.88 : 0.72, mul), brow: rgba(A, isDark ? 0.55 : 0.42, mul),
-    voiceC: rgba(B, isDark ? 0.35 : 0.22, mul), listenC: rgba(A, isDark ? 0.28 : 0.18, mul), outer: rgba(A, isDark ? 0.14 : 0.09, mul),
-    irisA: rgba(E, 0.95, mul), irisB: rgba(B, 0.8, mul), mouth: '#E6D9FF',
-  };
   const listenOn = !!(env?.listening || presence?.listening);
   const calm = (presence?.conversationState === 'processing' || prof.key === 'sleepy' || prof.key === 'thinking') ? 0.35 : 0;
-  const auraI = 0.4 + warmth.value * 0.3 + anticipate.value * 0.3;
+  const auraI = 0.4 + (presence?.warmth ?? 0.35) * 0.3 + (presence?.anticipation ?? 0.25) * 0.3;
 
   return (
     <View accessible accessibilityLabel={`MyTwin: ${presence?.emotion ?? 'calm'}`} style={[styles.wrap, { width: size, height: size }]}>
@@ -130,10 +133,10 @@ export default function DigitalBeing({ presence, size = 360, isDark = true, env,
         </Circle>
         <AdaptiveHalo t={t} cx={cx} cy={cy} R={R} spread={fieldR.value} energy={energy} attn={attn} anticipate={anticipate} voice={voice} listenOn={listenOn}
           halo0={C.halo0} halo1={C.halo1} sweep0={C.sweep0} sweep1={C.sweep1} listenC={C.listenC} voiceC={C.voiceC} outer={C.outer} />
-        <OrganicMembrane t={t} cx={cx} cy={cy} W={W} H={H} energy={energy} turb={turb} breath={breath} pulse={pulse} tiltV={tiltV} fieldR={fieldR} awakenV={awakenV}
+        <OrganicMembrane t={t} cx={cx} cy={cy} W={W} H={H} energy={energy} turb={turb} breath={breath} pulse={pulse} tiltV={tiltV} fieldR={fieldR} awakenV={awakenV} bp={bp}
           transparency={(env?.light ?? 0.5) > 0.8 ? 0.25 : 0} colors={[C.m1, C.m2, C.m3, C.m4, C.m5, C.m6, C.m7]} fill={C.fill} />
-        <EmotionalAura t={t} cx={cx} cy={cy} R={R} warmth={warmth} attn={attn} energy={energy} pulse={pulse} auraI={auraI} halo0={C.halo0} halo1={C.halo1} />
-        <EnergyCore t={t} cx={cx} cy={cy} R={R} H={H} energy={energy} warmth={warmth} breath={breath} pulse={pulse} awakenV={awakenV} conv={conv} core0={C.core0} core1={C.core1} core2={C.core2} />
+        <EmotionalAura t={t} cx={cx} cy={cy} R={R} warmth={warmth} attn={attn} energy={energy} pulse={pulse} auraI={auraI} bp={bp} halo0={C.halo0} halo1={C.halo1} />
+        <EnergyCore t={t} cx={cx} cy={cy} R={R} H={H} energy={energy} warmth={warmth} breath={breath} pulse={pulse} awakenV={awakenV} conv={conv} bp={bp} core0={C.core0} core1={C.core1} core2={C.core2} />
         <MicroParticles t={t} cx={cx} cy={cy} R={R} energy={energy} anticipate={anticipate} speed={speed} tiltV={tiltV} color={C.particle} emotion={prof.key} calm={calm} perf={perf} />
         <ExpressiveEyes t={t} cx={cx} cy={eyeCy} sep={sep} eyeSize={eyeSize} eyeOpen={eyeOpen} eyeGlow={eyeGlow} pupil={pupil} gazeX={gazeX} gazeY={gazeY} awaken={awakenV}
           emotion={prof.key} browRaise={prof.browRaise} tearOpacity={prof.key === 'sad' ? 0.6 : 0} squint={prof.key === 'angry' ? 0.4 : 0}
