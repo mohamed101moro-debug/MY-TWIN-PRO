@@ -1,5 +1,5 @@
 import { useColorScheme } from 'react-native';
-import { useTwinStore } from '../src/store/useTwinStore';
+import { useTwinStore } from '../store/useTwinStore';
 /** الثيم الرئيسي v3 — Superset شامل: التطبيق + طبقة design + الكيان (مصدر وحيد للحقيقة). */
 export interface AppColors {
   isDark: boolean;
