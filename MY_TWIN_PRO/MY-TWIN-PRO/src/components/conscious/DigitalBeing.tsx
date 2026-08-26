@@ -127,9 +127,9 @@ export default function DigitalBeing({ presence, size = 360, isDark = true, env,
   return (
     <View accessible accessibilityLabel={`MyTwin: ${presence?.emotion ?? 'calm'}`} style={[styles.wrap, { width: size, height: size }]}>
       <Canvas style={StyleSheet.absoluteFill}>
-        <Circle cx={cx} cy={cy} r={R * 2.28} color="#06030F" opacity={discO} />
+        <Circle cx={cx} cy={cy} r={R * 2.28} color={isDark ? '#06030F' : '#00000000'} opacity={discO} />
         <Circle cx={cx} cy={cy} r={R * 2.28} opacity={0.55}>
-          <RadialGradient c={vec(cx, cy)} r={R * 2.28} colors={['#0D0719', '#06030F']} />
+          <RadialGradient c={vec(cx, cy)} r={R * 2.28} colors={isDark ? ['#0D0719', '#06030F'] : ['#7C5FD418', '#00000000']} />
         </Circle>
         <AdaptiveHalo t={t} cx={cx} cy={cy} R={R} spread={fieldR.value} energy={energy} attn={attn} anticipate={anticipate} voice={voice} listenOn={listenOn}
           halo0={C.halo0} halo1={C.halo1} sweep0={C.sweep0} sweep1={C.sweep1} listenC={C.listenC} voiceC={C.voiceC} outer={C.outer} />

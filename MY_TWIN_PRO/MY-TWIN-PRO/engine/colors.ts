@@ -1,4 +1,5 @@
 import { useColorScheme } from 'react-native';
+import { useTwinStore } from '../src/store/useTwinStore';
 /** الثيم الرئيسي v3 — Superset شامل: التطبيق + طبقة design + الكيان (مصدر وحيد للحقيقة). */
 export interface AppColors {
   isDark: boolean;
@@ -37,7 +38,7 @@ export function syncInitialTheme(): void {
   try { /* الثيم يُدار لحظيًا عبر useColorScheme داخل المكونات */ } catch {}
 }
 export function useAppTheme() {
-  const scheme = useColorScheme();
+  const __stored = useTwinStore((st: any) => st.theme); const scheme = __stored ?? useColorScheme();;
   const isDark = scheme !== 'light';
   const colors = isDark ? DARK : LIGHT;
   return { isDark, colors, theme: colors };
