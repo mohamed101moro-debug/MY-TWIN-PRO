@@ -5,7 +5,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTim
 import { presenceEngine } from '../../core/PresenceBridge';
 import { useDeviceContext } from '../../hooks/useDeviceContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ThemeColors } from '../../../engine/colors';
+import { ThemeColors, useAppTheme } from '../../../engine/colors';
 import AwarenessBackground from './AwarenessBackground';
 import EntityWaveform from './EntityWaveform';
 import LivingEntity from './LivingEntity';
@@ -35,6 +35,7 @@ export default function ConsciousStage({ size = 280 }: { size?: number }) {
   const [pres, setPres] = useState<PresenceState | null>(null);
   const [awaken, setAwaken] = useState(0);
   const dev = useDeviceContext();
+  const { isDark } = useAppTheme();
   const [safe, setSafe] = useState(false);
   useEffect(() => { (async () => { try { const v = await AsyncStorage.getItem('mytwin_safe_mode'); if (v === '1') setSafe(true); } catch {} })(); }, []);
   const birth = useSharedValue(0);
@@ -53,9 +54,9 @@ export default function ConsciousStage({ size = 280 }: { size?: number }) {
   const state = presenceToEntity(pres);
   const env = { light: 0.5, noise: 0, motion: 0, listening: !!pres?.listening, camera: false, userNear: !!pres?.userPresent };
   return (
-    <View style={[styles.wrap, { backgroundColor: DARK.bg }]} pointerEvents="box-none">
+    <View style={[styles.wrap, { backgroundColor: isDark ? DARK.bg : '#FAF9FF' }]} pointerEvents="box-none">
       <LayerBoundary name="background" fallback={<View style={StyleSheet.absoluteFill} />}>
-        <AwarenessBackground dark intensity={(0.5 + (pres?.energy ?? 0.5) * 0.5) * Math.max(0.25, awaken)} speaking={!!pres?.speaking} />
+        <AwarenessBackground dark={isDark} intensity={(0.5 + (pres?.energy ?? 0.5) * 0.5) * Math.max(0.25, awaken)} speaking={!!pres?.speaking} />
       </LayerBoundary>
       <Animated.View style={[styles.center, birthStyle]} pointerEvents="box-none">
         <LayerBoundary name="entity" fallback={<FallbackBeing size={size} />}>
