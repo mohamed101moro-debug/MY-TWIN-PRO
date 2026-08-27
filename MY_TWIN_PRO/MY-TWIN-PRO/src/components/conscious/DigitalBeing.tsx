@@ -1,12 +1,6 @@
 // @ts-nocheck
-/**
- * DigitalBeing v6.2 — Orchestrator/Composition Root (الكيان الحي الكامل)
- * ======================================================================
- * P0: كل المساعدات 'worklet' (إصلاح جذر الكراش) + يركّب الطبقات الست + قرص كوزمي + فم ناطق.
- * P1: perf-tier (بطارية/شاشة) + ألوان عبر useMemo خارج منطق الرندرة المتكرر.
- * توقيت منطقي مشترك: useBreathAnimation ⇒ bp يمر للغشاء/النواة/الهالة (كيان واحد).
- * مصدر الحقيقة واحد: PresenceState ⇒ SharedValues ⇒ كل الطبقات (لا state محلي موازٍ).
- */
+/** DigitalBeing v6.2 — Orchestrator worklet-safe: كل sf/cl/organic/mouthPath تحمل 'worklet'
+ * (إصلاح جذر كراش الإقلاع) + يركّب الطبقات الست + قرص كوزمي يتبع الثيم + فم ناطق + perf-tier. */
 import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
 import { Canvas, Circle, Path, RadialGradient, vec } from '@shopify/react-native-skia';
@@ -43,17 +37,7 @@ export default function DigitalBeing({ presence, size = 360, isDark = true, env,
   const B = presence?.colorB ?? { r: 70, g: 139, b: 255 };
   const E = presence?.eyeColor ?? { r: 232, g: 222, b: 255 };
   const prof = getProfile(String(presence?.emotion ?? 'calm'));
-
-  // perf tier مرة واحدة (بطارية/شاشة) ⇒ استقرار أولًا
-  const perf = useMemo(() => {
-    try {
-      const b = devicePresenceEngine.getSensors().deviceBattery ?? 100;
-      const w = Dimensions.get('window').width;
-      return b < 25 || w < 400 ? 0.5 : b < 60 ? 0.8 : 1;
-    } catch { return 0.8; }
-  }, []);
-
-  // ألوان خارج منطق الرندرة المتكرر
+  const perf = useMemo(() => { try { const b = devicePresenceEngine.getSensors().deviceBattery ?? 100; const w = Dimensions.get('window').width; return b < 25 || w < 400 ? 0.5 : b < 60 ? 0.8 : 1; } catch { return 0.8; } }, []);
   const mul = isDark ? 1 : 0.78;
   const C = useMemo(() => ({
     core0: rgba(A, isDark ? 0.95 : 0.82, mul), core1: rgba(B, isDark ? 0.55 : 0.42, mul), core2: rgba(A, 0, mul),
@@ -119,7 +103,6 @@ export default function DigitalBeing({ presence, size = 360, isDark = true, env,
   const mouth = useDerivedValue(() => mouthPath(cx, cy + H * 0.55, W * 0.34, prof.mouthCurve, presence?.speaking ? Math.abs(Math.sin(sf(t.value) * 7)) * 0.5 : 0));
   const mouthO = useDerivedValue(() => cl(0.45 + voice.value * 0.4) * cl(0.2 + awakenV.value * 0.8));
   const discO = useDerivedValue(() => 0.94 * awakenV.value);
-
   const listenOn = !!(env?.listening || presence?.listening);
   const calm = (presence?.conversationState === 'processing' || prof.key === 'sleepy' || prof.key === 'thinking') ? 0.35 : 0;
   const auraI = 0.4 + (presence?.warmth ?? 0.35) * 0.3 + (presence?.anticipation ?? 0.25) * 0.3;
