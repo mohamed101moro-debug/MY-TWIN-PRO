@@ -1,11 +1,7 @@
 import React from 'react';
 import ConsciousStage from './ConsciousStage';
 import LivingEntity from './LivingEntity';
-/**
- * ConsciousBeing v3.1 — الموصِّل المحصَّن:
- * Boundary كبرى (LivingEntity عند أي استثناء) + ConsciousStage مضيفًا بصريًا وحيدًا
- * (ولادة + موجة + جو + شبكات طبقات + safe-mode + lowPower) ⇒ صفر ملفات معزولة.
- */
+/** ConsciousBeing v3.1 — Boundary كبرى + ConsciousStage مضيفًا بصريًا وحيدًا. */
 class BeingBoundary extends React.Component<{ fallback: React.ReactNode; children: React.ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
