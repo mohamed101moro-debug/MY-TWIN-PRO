@@ -4,7 +4,7 @@ import { View, StyleSheet } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { presenceEngine } from '../../core/PresenceBridge';
 import { useDeviceContext } from '../../hooks/useDeviceContext';
-import { useTwinStore } from '../../store/useTwinStore';
+import { useTwinStore } from '../../../store/useTwinStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeColors, useAppTheme } from '../../../engine/colors';
 import AwarenessBackground from './AwarenessBackground';
