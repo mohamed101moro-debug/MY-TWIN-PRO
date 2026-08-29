@@ -7,6 +7,8 @@ import { stateBus } from '../src/core/StateBus';
 import { useAppTheme } from '../engine/colors';
 import { audioMixer } from '../src/core/AudioMixer';
 const { height } = Dimensions.get('window');
+let __introDone=false;
+const __onceIntro=(fn:any)=>{ if(__introDone) return; __introDone=true; (async()=>{ try{ const v=await import('@react-native-async-storage/async-storage').then(m=>m.default.getItem('mytwin_intro_played')); if(v==='1') return; await import('@react-native-async-storage/async-storage').then(m=>m.default.setItem('mytwin_intro_played','1')); fn(); }catch{ fn(); } })(); };
 export default function Index() {
   const { isDark } = useAppTheme();
   const logoO = useSharedValue(0); const nameO = useSharedValue(0);
@@ -16,7 +18,7 @@ export default function Index() {
   const fadeStyle = useAnimatedStyle(() => ({ opacity: exitO.value }));
   useEffect(() => {
     let alive = true;
-    const play = (e: string) => { try { audioMixer.playEffect(e); } catch {} };
+    const play = (e: string) => { try { __onceIntro(() => audioMixer.playEffect(e)); } catch {} };
     stateBus.patch({ energy: 0.35, curiosity: 0.4 });
     const seq = async () => {
       await new Promise(r => setTimeout(r, 700));
@@ -39,7 +41,7 @@ export default function Index() {
     <View style={[st.root, { backgroundColor: isDark ? '#05010A' : '#FAF9FF' }]}>
       <StatusBar hidden />
       <Animated.View style={[st.fill, fadeStyle]}>
-        <View style={st.entity}><ConsciousBeing size={Math.min(height * 0.52, 430)} /></View>
+        <View style={st.entity}>{null}</View>
         <Animated.View style={[st.brand, logoStyle]}><Image source={require('../assets/brand/logo.png')} style={st.logo} resizeMode="contain" /></Animated.View>
         <Animated.Text style={[st.name, nameStyle, { color: isDark ? '#B8A0D0' : '#4C1D95' }]}>© By SOULSYNC</Animated.Text>
       </Animated.View>

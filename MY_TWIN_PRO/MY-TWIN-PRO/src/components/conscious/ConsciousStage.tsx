@@ -11,6 +11,7 @@ import AwarenessBackground from './AwarenessBackground';
 import EntityWaveform from './EntityWaveform';
 import LivingEntity from './LivingEntity';
 import DigitalBeing from './DigitalBeing';
+import LivingBeingSkia from './LivingBeingSkia';
 import { presenceToEntity } from './useEntityState';
 import type { PresenceState } from '../../../engine/presence/PresenceTypes';
 /** ConsciousStage v6 — الكيان الأساسي LivingEntity v3 (استقرار) + Skia خلف علم gfx + ثيم موحّد. */
@@ -36,7 +37,7 @@ export default function ConsciousStage({ size = 280 }: { size?: number }) {
   const [awaken, setAwaken] = useState(0);
   const dev = useDeviceContext();
   const { isDark } = useAppTheme();
-  const gfx = useTwinStore((s: any) => s.gfx ?? 'lite');
+  const gfx = useTwinStore((s: any) => s.gfx ?? 'skia');
   const [safe, setSafe] = useState(false);
   useEffect(() => { (async () => { try { const v = await AsyncStorage.getItem('mytwin_safe_mode'); if (v === '1') setSafe(true); } catch {} })(); }, []);
   const birth = useSharedValue(0);
@@ -63,7 +64,7 @@ export default function ConsciousStage({ size = 280 }: { size?: number }) {
       <Animated.View style={[styles.center, birthStyle]} pointerEvents="box-none">
         <LayerBoundary name="entity" fallback={<FallbackBeing size={size} isDark={isDark} />}>
           {pres ? (useSkia
-            ? <DigitalBeing presence={pres} size={size} isDark={isDark} env={env} maturity={0.85} awaken={awaken} />
+            ? <LivingBeingSkia presence={pres} size={size} isDark={isDark} env={env} maturity={0.85} awaken={awaken} />
             : <LivingEntity state={state} size={size} intensity={0.7} speaking={!!pres.speaking} listening={!!pres.listening} isDark={isDark} />)
             : <FallbackBeing size={size} isDark={isDark} />}
         </LayerBoundary>

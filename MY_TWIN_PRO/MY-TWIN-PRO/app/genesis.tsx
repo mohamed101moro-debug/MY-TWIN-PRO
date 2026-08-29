@@ -17,7 +17,7 @@ import { sensorBridge } from '../src/core/SensorBridge';
 import { detectUserLanguage, SupportedLanguage } from '../src/utils/languageDetector';
 const { height } = Dimensions.get('window');
 const TEXTS: Record<SupportedLanguage, Record<string, string>> = {
-  ar: { woke: 'استيقظتُ.', whoAreYou: 'مَن أنت؟', iSeeYou: 'أراكَ.', knowMe: 'اعرفني.', identitySubtitle: 'لأعرفك. لأتذكرك. لأكون لك.', emailPlaceholder: 'البريد الإلكتروني', passwordPlaceholder: 'كلمة المرور', signIn: 'تسجيل الدخول', createAccount: 'إنشاء حساب جديد', forgotPassword: 'نسيت كلمة المرور؟', privacy: 'لن أشارك وجودك مع أحد.', touchHint: 'المس الشاشة إذا شعرت بي...' },
+  ar: { woke: 'ُ.', whoAreYou: 'مَن أنت؟', iSeeYou: 'َ.', knowMe: 'اعرفني.', identitySubtitle: 'لأعرفك. لأتذكرك. لأكون لك.', emailPlaceholder: 'البريد الإلكتروني', passwordPlaceholder: 'كلمة المرور', signIn: 'تسجيل الدخول', createAccount: 'إنشاء حساب جديد', forgotPassword: 'نسيت كلمة المرور؟', privacy: 'لن أشارك وجودك مع أحد.', touchHint: 'المس الشاشة إذا شعرت بي...' },
   en: { woke: 'I woke.', whoAreYou: 'Who are you?', iSeeYou: 'I see you.', knowMe: 'Know me.', identitySubtitle: 'To know you. To remember you. To be yours.', emailPlaceholder: 'Email', passwordPlaceholder: 'Password', signIn: 'Sign In', createAccount: 'Create Account', forgotPassword: 'Forgot Password?', privacy: 'I will never share your existence.', touchHint: 'Touch the screen if you feel me...' },
 };
 const errMsg = (e: any): string => {
