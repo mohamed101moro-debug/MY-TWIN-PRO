@@ -28,7 +28,7 @@ const WINGS = [
   { id: 'soul', icon: Heart, label_ar: 'الروح', label_en: 'Soul', component: SoulWing, color: '#EC4899' },
   { id: 'journey', icon: Clock, label_ar: 'رحلتنا', label_en: 'Our Journey', component: JourneyWing, color: '#A855F7' },
   { id: 'forest', icon: TreePine, label_ar: 'غابة الذكريات', label_en: 'Memory Forest', component: ForestWing, color: '#10B981' },
-  { id: 'understanding', icon: Brain, label_ar: 'كيف أراك', label_en: 'Understanding You', component: UnderstandingWing, color: '#3B82F6' },
+  { id: 'understanding', icon: Brain, label_ar: 'كيف ', label_en: 'Understanding You', component: UnderstandingWing, color: '#3B82F6' },
   { id: 'capabilities', icon: Grid3X3, label_ar: 'الغرف', label_en: 'Capabilities', component: CapabilitiesWing, color: '#F59E0B' },
   { id: 'settings', icon: Settings, label_ar: 'الإعدادات', label_en: 'Settings', component: SettingsWing, color: '#6B7280' },
   { id: 'about', icon: Info, label_ar: 'عن التوأم', label_en: 'About', component: AboutCompanyWrap, color: '#6366F1' },

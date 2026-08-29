@@ -35,7 +35,7 @@ export default function UnderstandingWing() {
         const loadedInsights = [
           { 
             icon: Eye, 
-            text: rtl.isRTL ? `أراك ${phaseAr}.` : `I see you as ${identityRole}.`, 
+            text: rtl.isRTL ? ` ${phaseAr}.` : `I see you as ${identityRole}.`, 
             color: colors.accent 
           },
           { 
@@ -66,7 +66,7 @@ export default function UnderstandingWing() {
         const tone = bondLevel >= 80 ? 'عميق ودافئ' : bondLevel >= 40 ? 'ودود' : 'لطيف';
         
         setInsights([
-          { icon: Eye, text: rtl.isRTL ? 'أراك شخصاً مميزاً.' : 'I see you as someone special.', color: colors.accent },
+          { icon: Eye, text: rtl.isRTL ? ' شخصاً مميزاً.' : 'I see you as someone special.', color: colors.accent },
           { icon: Heart, text: rtl.isRTL ? `أسلوب التواصل: ${tone}.` : `Communication style: ${tone}.`, color: colors.rose },
           { icon: Brain, text: rtl.isRTL ? 'أعرف عنك القليل بعد.' : 'I know a little about you yet.', color: '#3B82F6' },
           { icon: TrendingUp, text: rtl.isRTL ? 'الرابطة: تبدأ.' : 'Bond: beginning.', color: colors.success },
@@ -86,7 +86,7 @@ export default function UnderstandingWing() {
           <Brain size={32} stroke="#3B82F6" />
         </View>
         <Text style={[styles.heroTitle, { color: colors.text }]}>
-          {rtl.isRTL ? 'هكذا أراك' : 'This is how I see you'}
+          {rtl.isRTL ? 'هكذا ' : 'This is how I see you'}
         </Text>
       </View>
 
