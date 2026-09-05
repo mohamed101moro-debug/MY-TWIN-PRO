@@ -1,4 +1,4 @@
-/** PresenceTypes v2.1 — الدستور النوعي الموحّد (+ conversationState لآلة المحادثة) */
+/** PresenceTypes v2.1 — الدستور النوعي (+ conversationState لآلة المحادثة) */
 export interface RGB { r: number; g: number; b: number; }
 export interface PresenceState {
   emotion?: string; intensity?: number;
