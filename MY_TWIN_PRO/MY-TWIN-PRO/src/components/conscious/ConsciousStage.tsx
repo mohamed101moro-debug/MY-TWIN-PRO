@@ -1,20 +1,22 @@
 // @ts-nocheck
+/** ConsciousStage v6.1 — مضيف بصري: جو + ولادة + حدود طبقات + env حقيقي من الحساسات (لا ثوابت) */
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { presenceEngine } from '../../core/PresenceBridge';
+import { stateBus } from '../../core/StateBus';
 import { useDeviceContext } from '../../hooks/useDeviceContext';
 import { useTwinStore } from '../../../store/useTwinStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeColors, useAppTheme } from '../../../engine/colors';
+import { snapshotFromSensors } from '../../../engine/presence/EnvironmentalReactor';
+import { devicePresenceEngine } from '../../../engine/device/DevicePresenceEngine';
 import AwarenessBackground from './AwarenessBackground';
 import EntityWaveform from './EntityWaveform';
 import LivingEntity from './LivingEntity';
-import DigitalBeing from './DigitalBeing';
 import LivingBeingSkia from './LivingBeingSkia';
 import { presenceToEntity } from './useEntityState';
 import type { PresenceState } from '../../../engine/presence/PresenceTypes';
-/** ConsciousStage v6 — الكيان الأساسي LivingEntity v3 (استقرار) + Skia خلف علم gfx + ثيم موحّد. */
 const DARK = ThemeColors.dark;
 function FallbackBeing({ size, isDark }: { size: number; isDark: boolean }) {
   const p = useSharedValue(0);
@@ -34,6 +36,7 @@ class LayerBoundary extends React.Component<{ name: string; fallback: React.Reac
 }
 export default function ConsciousStage({ size = 280 }: { size?: number }) {
   const [pres, setPres] = useState<PresenceState | null>(null);
+  const [env, setEnv] = useState<any>(undefined);
   const [awaken, setAwaken] = useState(0);
   const dev = useDeviceContext();
   const { isDark } = useAppTheme();
@@ -50,11 +53,16 @@ export default function ConsciousStage({ size = 280 }: { size?: number }) {
   useEffect(() => {
     presenceEngine.start();
     const un = presenceEngine.subscribe((s) => setPres({ ...s }));
-    return () => { un(); };
+    const iv = setInterval(() => {
+      try {
+        const st: any = stateBus.getState();
+        setEnv(snapshotFromSensors(devicePresenceEngine.getSensors(), { listening: !!st.listening, speaking: !!st.speaking, thinking: !!st.thinking }));
+      } catch {}
+    }, 600);
+    return () => { un(); clearInterval(iv); };
   }, []);
   const lowPower = (dev?.batteryLevel ?? 1) < 0.2 && !dev?.isCharging;
   const state = presenceToEntity(pres);
-  const env = { light: 0.5, noise: 0, motion: 0, listening: !!pres?.listening, camera: false, userNear: !!pres?.userPresent };
   const useSkia = gfx === 'skia' && !safe && !lowPower;
   return (
     <View style={[styles.wrap, { backgroundColor: isDark ? DARK.bg : '#FAF9FF' }]} pointerEvents="box-none">
@@ -64,7 +72,7 @@ export default function ConsciousStage({ size = 280 }: { size?: number }) {
       <Animated.View style={[styles.center, birthStyle]} pointerEvents="box-none">
         <LayerBoundary name="entity" fallback={<FallbackBeing size={size} isDark={isDark} />}>
           {pres ? (useSkia
-            ? <LivingBeingSkia presence={pres} size={size} isDark={isDark} env={env} maturity={0.85} awaken={awaken} />
+            ? <LivingBeingSkia presence={pres} size={size} isDark={isDark} awaken={awaken} />
             : <LivingEntity state={state} size={size} intensity={0.7} speaking={!!pres.speaking} listening={!!pres.listening} isDark={isDark} />)
             : <FallbackBeing size={size} isDark={isDark} />}
         </LayerBoundary>
