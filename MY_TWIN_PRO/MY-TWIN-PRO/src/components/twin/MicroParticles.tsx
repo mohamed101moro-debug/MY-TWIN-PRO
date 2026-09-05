@@ -1,5 +1,5 @@
 // @ts-nocheck
-/** MicroParticles v3.1 — سلوك حركي عاطفي + إبطاء تركيز + فئة أداء + فواصل مسارات سليمة */
+/** MicroParticles v3.1 — حقل واحد فعّال: تمايز عاطفي + إبطاء تركيز + فئة أداء + أطوار/سرعات مختلفة */
 import React from 'react';
 import { Path, BlurMask, Group } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
