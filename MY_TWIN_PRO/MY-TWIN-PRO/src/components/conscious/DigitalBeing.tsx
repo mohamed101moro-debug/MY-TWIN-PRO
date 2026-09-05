@@ -1,12 +1,20 @@
 // @ts-nocheck
-/** DigitalBeing v7.0 — عارض VisualState نقي: لا قرارات هنا، فقط رسم (المواصفات 22-24) */
+/**
+ * DigitalBeing v7.0 — عارض VisualState نقي (القاعدة الذهبية: لا قرارات هنا)
+ * ======================================================================
+ * - يستهلك vs جاهزًا من LivingBeingSkia؛ وعند غيابه (عقود ShaderBeing القديمة)
+ *   يشتقّه عبر buildVisualState ⇒ مصدر اشتقاق واحد، لا منطق مزدوج.
+ * - توقيت منطقي مشترك: bpM/bpH/bpC (إزاحات طور) ⇒ الطبقات تتنفس ككيان واحد.
+ * - كل المساعدات 'worklet' + دروع sf/cl ⇒ صفر كراش خيط UI.
+ */
 import React, { useEffect, useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Canvas, Circle, Path, RadialGradient, vec, BlurMask, Group } from '@shopify/react-native-skia';
+import { StyleSheet, View, Dimensions } from 'react-native';
+import { Canvas, Circle, Path, RadialGradient, vec } from '@shopify/react-native-skia';
 import { useSharedValue, useFrameCallback, useDerivedValue, withTiming, cancelAnimation, Easing } from 'react-native-reanimated';
 import type { VisualState } from '../../../engine/presence/VisualState';
 import { buildVisualState } from '../../../engine/presence/VisualState';
 import type { PresenceState } from '../../../engine/presence/PresenceTypes';
+import { devicePresenceEngine } from '../../../engine/device/DevicePresenceEngine';
 import { useBreathAnimation } from '../../hooks/useBreathAnimation';
 import AdaptiveHalo from '../twin/AdaptiveHalo';
 import EmotionalAura from '../twin/EmotionalAura';
@@ -30,11 +38,11 @@ const STARS = [[0.18, 0.12], [0.82, 0.2], [0.7, 0.08], [0.1, 0.55], [0.9, 0.62],
 export default function DigitalBeing({ vs, presence, env, size = 360, isDark = true, maturity = 0.8, userNear, awaken = 1 }: {
   vs?: VisualState; presence?: PresenceState | null; env?: any; size?: number; isDark?: boolean; maturity?: number; userNear?: boolean; awaken?: number;
 }) {
-  // تكييف خلفي: عند غياب vs (عقد ShaderBeing القديم) يُشتق من presence+env — القرار يبقى في VisualState
+  // تكييف خلفي: غياب vs ⇒ اشتقاق من presence+env (نفس الطبقة الوسيطة)
   const envSnap: any = env ? { ambientLight: env.light ?? env.ambientLight, noise: env.noise, motion: env.motion, proximity: env.proximity, userPresent: !!(env.userNear ?? env.userPresent), camera: !!env.camera, listening: !!env.listening, speaking: !!presence?.speaking, thinking: !!presence?.thinking, night: env.night } : undefined;
   const VS: VisualState = vs ?? buildVisualState(presence ?? null, envSnap, awaken);
   const cx = size / 2, cy = size / 2, R = size * 0.32;
-  const W = R * 0.8, H = R * 0.98;
+  const W = R * 0.80, H = R * 0.98;
   const eyeCy = cy - H * 0.18, sep = W * 0.62, eyeSize = W * 0.42;
   const al = isDark ? 1 : 0.8;
   const C = useMemo(() => ({
@@ -50,6 +58,7 @@ export default function DigitalBeing({ vs, presence, env, size = 360, isDark = t
     voiceC: hexA(VS.colorB, 0.3 * al), listenC: hexA(VS.colorA, 0.24 * al), outer: hexA(VS.colorA, 0.14 * al),
     mouth: '#E6D9FF',
   }), [VS.colorA, VS.colorB, isDark]);
+  const perf = useMemo(() => { try { const b = devicePresenceEngine.getSensors().deviceBattery ?? 100; const w = Dimensions.get('window').width; return b < 25 || w < 400 ? 0.5 : b < 60 ? 0.8 : 1; } catch { return 0.8; } }, []);
   const t = useSharedValue(0);
   const energy = useSharedValue(cl(VS.energy));
   const speed = useSharedValue(cl(VS.particleSpeed, 0.05, 2));
@@ -111,7 +120,7 @@ export default function DigitalBeing({ vs, presence, env, size = 360, isDark = t
         {STARS.map((s, i) => <Circle key={i} cx={size * s[0]} cy={size * s[1]} r={i % 2 ? 1 : 1.4} color="#B8A0FF" opacity={0.16 * (isDark ? 1 : 0.5)} />)}
         <AdaptiveHalo t={t} cx={cx} cy={cy} R={R} spread={VS.fieldRadius} energy={energy} attn={attn} anticipate={ant} voice={voice} listenOn={listenOn}
           halo0={C.halo0} halo1={C.halo1} sweep0={C.sweep0} sweep1={C.sweep1} listenC={C.listenC} voiceC={C.voiceC} outer={C.outer} />
-        <MicroParticles t={t} cx={cx} cy={cy} R={R} energy={energy} anticipate={ant} speed={speed} tiltV={tiltV} color={C.particle} emotion={VS.emotion} calm={calm} perf={1} />
+        <MicroParticles t={t} cx={cx} cy={cy} R={R} energy={energy} anticipate={ant} speed={speed} tiltV={tiltV} color={C.particle} emotion={VS.emotion} calm={calm} perf={perf} />
         <OrganicMembrane t={t} cx={cx} cy={cy} W={W} H={H} energy={energy} turb={turb} breath={breath} pulse={pulse} tiltV={tiltV} fieldR={fieldR} awakenV={awakenV} bp={bpM}
           transparency={VS.ambientLight > 0.8 ? 0.25 : 0} colors={[C.m1, C.m2, C.m3, C.m4, C.m5, C.m6, C.m7]} fill={C.fill} />
         <EmotionalAura t={t} cx={cx} cy={cy} R={R} warmth={warmth} attn={attn} energy={energy} pulse={pulse} auraI={VS.auraIntensity} bp={bpH} halo0={C.halo0} halo1={C.halo1} />

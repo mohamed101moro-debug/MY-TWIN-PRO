@@ -1,4 +1,4 @@
-/** VisualState v1.2 — الطبقة الوسيطة الوحيدة: PresenceState + Env ⇒ VisualState ⇒ Renderer */
+/** VisualState v1.2 — الطبقة الوسيطة الوحيدة: PresenceState + Env ⇒ VisualState ⇒ Renderer (كل القرارات هنا) */
 import { mapEmotion } from './EmotionToVisualMapper';
 import type { EmotionVisualProfile } from './EmotionToVisualMapper';
 import { reactToEnvironment } from './EnvironmentalReactor';

@@ -1,5 +1,5 @@
 // @ts-nocheck
-/** LivingBeingSkia v1.1 — presence(+env اختياري) ⇒ VisualState ⇒ DigitalBeing v7 (بيئة حقيقية من الحساسات). */
+/** LivingBeingSkia v1.1 — المحوّل الوحيد: presence(+env اختياري) ⇒ VisualState ⇒ DigitalBeing v7. */
 import React, { useMemo } from 'react';
 import DigitalBeing from './DigitalBeing';
 import { buildVisualState } from '../../../engine/presence/VisualState';

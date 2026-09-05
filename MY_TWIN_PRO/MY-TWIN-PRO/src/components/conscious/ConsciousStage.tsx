@@ -1,5 +1,6 @@
 // @ts-nocheck
-/** ConsciousStage v6.1 — مضيف بصري: جو + ولادة + حدود طبقات + gfx + ثيم موحّد (بلا env ثابت: البيئة تُبنى في LivingBeingSkia). */
+/** ConsciousStage v6.2 — المضيف البصري: جو + ولادة + حدود طبقات + gfx + ثيم موحّد.
+ *  لا env ثابت: البيئة الحقيقية تُبنى داخل LivingBeingSkia من الحساسات (snapshotFromSensors). */
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
