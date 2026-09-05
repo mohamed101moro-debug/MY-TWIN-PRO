@@ -1,5 +1,5 @@
 // @ts-nocheck
-/** AdaptiveHalo v3.1 — هالة متكيفة: spread (قرب/حركة/بيئة) + دوران كوني + حلقتا إصغاء/صوت */
+/** AdaptiveHalo v3.1 — + spread */
 import React from 'react';
 import { Circle, RadialGradient, SweepGradient, vec, BlurMask, Group } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';

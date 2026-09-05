@@ -1,5 +1,5 @@
 // @ts-nocheck
-/** MicroParticles v3.1 — حقل واحد فعّال: تمايز عاطفي + إبطاء تركيز + فئة أداء + أطوار/سرعات مختلفة */
+/** MicroParticles v3.1 — تمايز عاطفي + إبطاء تركيز + فئة أداء */
 import React from 'react';
 import { Path, BlurMask, Group } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';

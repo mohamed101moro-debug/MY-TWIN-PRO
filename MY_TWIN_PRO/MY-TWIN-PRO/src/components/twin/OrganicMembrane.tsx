@@ -1,5 +1,5 @@
 // @ts-nocheck
-/** OrganicMembrane v2.1 — وجه بيضاوي 7 أغشية + Fill + bp (طور مُزاح) + فواصل مسارات سليمة */
+/** OrganicMembrane v2.1 — + bp (طور تنفس مُزاح) + فواصل مسارات سليمة */
 import React from 'react';
 import { Path } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';

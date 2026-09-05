@@ -1,5 +1,5 @@
 // @ts-nocheck
-/** EmotionalAura v3.1 — مجال عاطفي: نصف قطر/نبض/شدة مشتقة + طور مُزاح bp */
+/** EmotionalAura v3.1 — + auraI/pulse/bp */
 import React from 'react';
 import { Circle, RadialGradient, vec, BlurMask, Group } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
