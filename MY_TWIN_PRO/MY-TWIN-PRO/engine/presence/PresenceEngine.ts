@@ -1,4 +1,10 @@
-/** PresenceEngine v2.2 — مصدر الحقيقة: blend 600ms + Reactor(inkl. night/camera) + آلة محادثة + micro/echo + wander + reset */
+/**
+ * PresenceEngine v2.2 — مصدر الحقيقة الواحد
+ * ===========================================
+ * v2.2: env يشمل night/camera (تفاعلا الليل والكاميرا حيّان) + آلة المحادثة الخماسية + reset().
+ * العقد محفوظ حرفيًا: start/stop/subscribe/getSnapshot/setEmotion/addMicroExpression/triggerMemoryEcho
+ * + startPresenceLoop/stopPresenceLoop/applyLifeRhythm (توافق خلفي).
+ */
 import type { PresenceState } from './PresenceTypes';
 import { EMOTION_PROFILES, getProfile, blendProfiles, profileToPresencePatch, profileFromValence } from './EmotionToVisualMapper';
 import type { EmotionVisualProfile } from './EmotionToVisualMapper';
@@ -10,7 +16,8 @@ const c11 = (n: unknown, fb = 0): number => { const v = Number(n); return Number
 const BASELINE: PresenceState = {
   emotion: 'calm', intensity: 0.6, energy: 0.55, pulse: 0.4, breathing: 0.4,
   eyeOpenness: 0.85, eyeGlow: 0.88, pupilSize: 0.42, gazeX: 0, gazeY: 0,
-  warmth: 0.35, attention: 0.5, anticipation: 0.25, voiceLevel: 0, speaking: false, listening: false, thinking: false,
+  warmth: 0.35, attention: 0.5, anticipation: 0.25, voiceLevel: 0,
+  speaking: false, listening: false, thinking: false,
   fieldSpeed: 0.4, turbulence: 0.18, orbitality: 0.68, fieldRadius: 1, fieldOpacity: 0.85,
   colorA: EMOTION_PROFILES.calm.colorA, colorB: EMOTION_PROFILES.calm.colorB, eyeColor: EMOTION_PROFILES.calm.eyeColor,
   userPresent: false, micro: undefined, conversationState: 'idle',
@@ -40,9 +47,10 @@ export class PresenceEngine {
   addMicroExpression(type: string, intensity = 0.7): void { this.micro = { type: String(type || 'head_nod'), intensity: c01(intensity, 0.7), ts: Date.now() }; this.dirty = true; }
   triggerMemoryEcho(): void { this.echoTs = Date.now(); this.dirty = true; }
   reset(): void {
-    this.state = { ...BASELINE }; this.fromProfile = EMOTION_PROFILES.calm; this.toProfile = EMOTION_PROFILES.calm;
-    this.blendStart = 0; this.intensityVal = 0.6; this.lastSetEmotionTs = 0; this.micro = null; this.echoTs = 0;
-    this.conv = 'idle'; this.prevThinking = false; this.lastThinkEnd = 0; this.dirty = true;
+    this.state = { ...BASELINE };
+    this.fromProfile = EMOTION_PROFILES.calm; this.toProfile = EMOTION_PROFILES.calm;
+    this.blendStart = 0; this.intensityVal = 0.6; this.lastSetEmotionTs = 0;
+    this.micro = null; this.echoTs = 0; this.conv = 'idle'; this.prevThinking = false; this.lastThinkEnd = 0; this.dirty = true;
   }
   private currentProfile(): EmotionVisualProfile {
     const t = c01((Date.now() - this.blendStart) / this.blendDur);
@@ -57,8 +65,9 @@ export class PresenceEngine {
     const prof = this.currentProfile();
     const patch = profileToPresencePatch(prof, this.intensityVal);
     const env: EnvSnapshot = {
-      ambientLight: bus.ambientLight, noise: bus.voiceLevel, motion: bus.movement, proximity: bus.proximity,
-      userPresent: !!bus.userPresent, listening: !!bus.listening, speaking: !!bus.speaking, thinking: !!bus.thinking,
+      ambientLight: bus.ambientLight, noise: bus.voiceLevel, motion: bus.movement,
+      proximity: bus.proximity, userPresent: !!bus.userPresent,
+      listening: !!bus.listening, speaking: !!bus.speaking, thinking: !!bus.thinking,
       night: !!bus.night, camera: !!bus.camera,
     };
     const merged = applyModsToPatch(patch, reactToEnvironment(env));
@@ -77,6 +86,7 @@ export class PresenceEngine {
     if (microType === 'head_nod') { warmth = c01(warmth + 0.15); attention = c01(attention + 0.1); }
     if (microType === 'membrane_shiver') turbulence = c01(turbulence + 0.18);
     if (echo) anticipation = c01(anticipation + 0.2);
+    // آلة المحادثة: IDLE→LISTENING→PROCESSING→UNDERSTANDING→RESPONDING→IDLE
     if (!!bus.thinking) this.conv = 'processing';
     else if (!!bus.listening) this.conv = 'listening';
     else if (!!bus.speaking) this.conv = 'responding';

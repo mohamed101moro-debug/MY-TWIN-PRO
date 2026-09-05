@@ -1,5 +1,5 @@
 // @ts-nocheck
-/** EnergyCore v3.2 — + conv (تسارع النبض) + bp (طور مُزاح) */
+/** EnergyCore v3.2 — نواة: تردد يتسارع مع conv (processing/responding) + طور مُزاح bp + specular */
 import React from 'react';
 import { Circle, RadialGradient, vec, BlurMask, Group } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
