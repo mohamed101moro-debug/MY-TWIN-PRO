@@ -1,16 +1,13 @@
 // @ts-nocheck
-/** ConsciousStage v6.1 — مضيف بصري: جو + ولادة + حدود طبقات + env حقيقي من الحساسات (لا ثوابت) */
+/** ConsciousStage v6.1 — مضيف بصري: جو + ولادة + حدود طبقات + gfx + ثيم موحّد (بلا env ثابت: البيئة تُبنى في LivingBeingSkia). */
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { presenceEngine } from '../../core/PresenceBridge';
-import { stateBus } from '../../core/StateBus';
 import { useDeviceContext } from '../../hooks/useDeviceContext';
 import { useTwinStore } from '../../../store/useTwinStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeColors, useAppTheme } from '../../../engine/colors';
-import { snapshotFromSensors } from '../../../engine/presence/EnvironmentalReactor';
-import { devicePresenceEngine } from '../../../engine/device/DevicePresenceEngine';
 import AwarenessBackground from './AwarenessBackground';
 import EntityWaveform from './EntityWaveform';
 import LivingEntity from './LivingEntity';
@@ -36,7 +33,6 @@ class LayerBoundary extends React.Component<{ name: string; fallback: React.Reac
 }
 export default function ConsciousStage({ size = 280 }: { size?: number }) {
   const [pres, setPres] = useState<PresenceState | null>(null);
-  const [env, setEnv] = useState<any>(undefined);
   const [awaken, setAwaken] = useState(0);
   const dev = useDeviceContext();
   const { isDark } = useAppTheme();
@@ -53,13 +49,7 @@ export default function ConsciousStage({ size = 280 }: { size?: number }) {
   useEffect(() => {
     presenceEngine.start();
     const un = presenceEngine.subscribe((s) => setPres({ ...s }));
-    const iv = setInterval(() => {
-      try {
-        const st: any = stateBus.getState();
-        setEnv(snapshotFromSensors(devicePresenceEngine.getSensors(), { listening: !!st.listening, speaking: !!st.speaking, thinking: !!st.thinking }));
-      } catch {}
-    }, 600);
-    return () => { un(); clearInterval(iv); };
+    return () => { un(); };
   }, []);
   const lowPower = (dev?.batteryLevel ?? 1) < 0.2 && !dev?.isCharging;
   const state = presenceToEntity(pres);

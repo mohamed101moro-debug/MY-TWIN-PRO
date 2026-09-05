@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { mapEmotion } from '../../../engine/presence/EmotionToVisualMapper';
 import type { PresenceState } from '../../../engine/presence/PresenceTypes';
-/** LivingEntity v3 — احتياط/طاقة منخفضة RN خالص: حلقتا هالة + 12 جسيمًا متنفسًا + غشاء + عيون/فم/نواة — ثيم‑adaptive */
+/** LivingEntity v3 — احتياط/طاقة منخفضة RN خالص: حلقتا هالة + 12 جسيمًا + غشاء + عيون/حواجب/فم/نواة + ثيم‑adaptive. */
 const c01 = (n: unknown, fb = 0) => { const v = Number(n); return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fb; };
 function Dot({ angle, dist, sz, delay, color, breath }: any) {
   const o = useSharedValue(0);
