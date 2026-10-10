@@ -4,7 +4,7 @@
 
 The source package is `MYTWIN-P0-EXECUTION-05-ACCESS-CONTROL-VERIFIER-2026-10-09.zip` (SHA-256 `a44aaccb193d314783e00269405ddeafac4ce23b2052b2bd0b4922fbdf84dc1b`). Its 883 source files were imported to repository root and matched by relative path and SHA-256 before integration notes and two compile fixes were added. `SOURCE_MANIFEST.json` records the archive's source-file digests, not subsequent integration-only edits.
 
-Branch `integration/p0-05-baseline-2026-10-10` was created from GitHub `main` commit `72953552fd45646647402094fc797e16598c17f4` (2026-09-05). The local baseline commit is `7d9beccf92b4c459ac3dea512aebcbc7a4fce9da`; Git ancestry is preserved and `main` has not been modified. The current follow-up changes are local and uncommitted.
+Branch `integration/p0-05-baseline-2026-10-10` was created from GitHub `main` commit `72953552fd45646647402094fc797e16598c17f4` (2026-09-05). The local baseline commit is `7d9beccf92b4c459ac3dea512aebcbc7a4fce9da`; follow-up commits add tests, CI hardening, dependency repair, and review notes. The latest local commit at the time of this record is `564ebc56fe37b1b00da91eb8f2033a6aa238cf45`. Git ancestry is preserved and `main` has not been modified. Nothing has been pushed.
 
 ## Build and test evidence
 
@@ -20,7 +20,9 @@ The CI workflow now runs TypeScript, Jest, Android JS export, Expo dependency al
 
 The final npm audit reports **89 findings** overall (29 moderate, 59 high, 1 critical) and **69** in the production dependency tree (29 moderate, 39 high, 1 critical). The remaining fixes suggested for core Expo/React Native dependencies cross major-version boundaries or otherwise alter the Expo SDK; no forced upgrade was applied. Production release and merge remain blocked by the critical/high findings.
 
-A static inventory found 254 route decorators in 50 route modules: 216 registered, 23 conditional internal, and 15 currently unmounted. Among 22 paths containing `{user_id}`, 20 use `require_request_owner`; project statistics performs explicit authenticated-ID equality and owner-filtered SQL; the admin detail path is covered by the separate internal-admin policy. Two regression tests were added for the project-statistics path. See `docs/release/API_SURFACE_INVENTORY_2026-10-10_AR.md` for exceptions and scan limits.
+A static inventory found 254 route decorators in 50 route modules: 216 registered, 23 conditional internal, and 15 currently unmounted. Among 22 paths containing `{user_id}`, 20 use `require_request_owner`; project statistics performs explicit authenticated-ID equality and owner-filtered SQL; the admin detail path is covered by the separate internal-admin policy. Two project-statistics regression tests and anonymous-access tests for passport/fingerprint routes are in the suite. See `docs/release/API_SURFACE_INVENTORY_2026-10-10_AR.md` for exceptions and scan limits.
+
+Gitleaks `8.30.1` scanned the new commit range against `origin/main` and returned **0 findings**. Two current-tree generic-pattern matches were reviewed as a variable name and a public Edge Read Aloud protocol constant, not project account credentials. GitHub's Secret Scanning Alerts API was inaccessible to the integration, so its server-side alerts were not inspected.
 
 ## Configuration and release boundary
 
