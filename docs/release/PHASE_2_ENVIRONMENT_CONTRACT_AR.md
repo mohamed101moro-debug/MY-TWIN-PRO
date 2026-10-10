@@ -34,3 +34,7 @@ WebSocket يشتق مخطط `ws/wss` من عنوان API نفسه، لذلك ل�
 3. عنوان API في كل profile صحيح ولا يحتوي أسراراً.
 4. TypeScript/Jest/Expo export يمر، ثم native preview build على Android وiOS وقبول الجهاز قبل أي نشر.
 5. Railway variables موجودة في نطاق الخدمة الصحيحة، وخدمة backend تبدأ فعلاً على البيئة المستهدفة.
+
+## قرار هوية EAS المعتمد
+
+بتاريخ 2026-10-11 أكد مالك المشروع أن UUID الصحيح هو `49db469b-9aca-4ffc-8b34-88b140528840`، وهو المعرف الموجود في `extra.eas.projectId`. يجب أن يشير `updates.url` إلى UUID نفسه. هذا القرار يُوحّد المستودع فقط؛ لا يثبت وجود جلسة EAS أو صلاحية credentials ولا يعني أن native build أو OTA قد نُفذ.
