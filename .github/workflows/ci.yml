@@ -1,0 +1,44 @@
+name: CI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - name: TypeScript
+        run: npx tsc --noEmit --skipLibCheck
+      - name: Jest
+        run: npm test -- --runInBand
+      - name: Android JavaScript bundle
+        run: npx expo export --platform android --output-dir /tmp/mytwin-expo-export
+      - name: Expo SDK dependency alignment
+        run: npx expo install --check
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
+  backend:
+    runs-on: ubuntu-latest
+    env:
+      # Isolated placeholders: tests must use fakes and must never reach a live project.
+      SUPABASE_URL: https://example.invalid
+      SUPABASE_SERVICE_KEY: local-test-only-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -q -r backend/requirements-test.txt
+      - name: Validate Railway repository-root context
+        run: python scripts/validate_railway_build_context.py
+      - name: Python compile
+        run: python -m compileall -q backend/app backend/main.py
+      - name: Backend tests
+        run: pytest -q backend/tests
+      - name: Railway backend image (repository-root context)
+        run: docker build --file backend/Dockerfile.root --tag mytwin-backend:ci .
