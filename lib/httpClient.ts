@@ -5,8 +5,13 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+import Constants from 'expo-constants';
+import { resolveApiBaseUrl } from '../engine/config/apiBaseUrl';
 
-export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || 'https://my-twin-pro-production.up.railway.app').replace(/\/+$/, '');
+export const API_BASE_URL = resolveApiBaseUrl(
+  process.env.EXPO_PUBLIC_API_BASE_URL,
+  Constants.expoConfig?.extra?.API_URL,
+);
 
 // ================================================================
 // الإعدادات
