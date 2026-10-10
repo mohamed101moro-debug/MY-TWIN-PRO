@@ -1,0 +1,4 @@
+# Railway's repository-root Docker context only needs the Python backend.
+*
+!backend/
+!backend/**

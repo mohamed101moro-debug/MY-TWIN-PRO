@@ -34,7 +34,11 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -q -r backend/requirements-test.txt
+      - name: Validate Railway repository-root context
+        run: python scripts/validate_railway_build_context.py
       - name: Python compile
         run: python -m compileall -q backend/app backend/main.py
       - name: Backend tests
         run: pytest -q backend/tests
+      - name: Railway backend image (repository-root context)
+        run: docker build --file backend/Dockerfile.root --tag mytwin-backend:ci .
