@@ -18,5 +18,4 @@ ios/
 __pycache__/
 *.pyc
 backend/.env
-__tests__/
 .pytest_cache/
