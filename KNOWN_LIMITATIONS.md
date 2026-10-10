@@ -1,23 +1,31 @@
 # Known Limitations — P0.05 Integration Baseline
 
-Last updated: 2026-10-10. This records what has not yet been proven; it does not infer the user's production configuration from local access.
+Last updated: 2026-10-10. This records what has not been proven; it does not infer the user's production configuration from local access.
 
 ## Platform access and deployment
 
-No Railway connector or CLI is available in this execution session. Therefore Railway service settings, watched branch, root directory, and automatic deployment policy were not inspected. The user reports that Railway environment variables are configured, but they could not be validated here. No deployment was made.
+No Railway connector or CLI is available in this execution session. `railway.json` points to `backend/Dockerfile` and `/health`, but the Railway service settings, watched branch, root directory, environment variables, and automatic deployment policy were not inspected. The user reports that Railway variables are configured; this has not been validated here. No deployment was made.
 
-The Supabase connector was enabled after user confirmation. The only listed project named `My Twin` (`nckgqvpocawknhkruhip`) returned status `INACTIVE`; reading its migration ledger timed out. The project was not restored or awakened, no branch was created, and no SQL or migration was applied. Confirm the intended staging project and availability before phases 4–5.
+The Supabase connector listed the only project named `My Twin` (`nckgqvpocawknhkruhip`) as `INACTIVE`; reading its migration ledger timed out. The project was not restored or awakened, no branch was created, and no SQL or migration was applied. Confirm the intended staging project and availability before database-dependent roadmap work.
 
-## Build and dependency gates
+## Build identity and client configuration
 
-`app.json` has different `extra.eas.projectId` and `updates.url` identifiers. These were not changed by guesswork. No EAS/Android build or device acceptance has run.
+`app.json` contains different `extra.eas.projectId` and `updates.url` identifiers. The user was asked which UUID is canonical; the answer is pending. No EAS build, OTA update, signed Android artifact, or device acceptance has run.
 
-A clean `npm ci --legacy-peer-deps` succeeded. TypeScript `npx tsc --noEmit --skipLibCheck` passed after fixing `SignupResult` narrowing for email-confirmation signups and changing `expo-file-system/legacy` to the SDK-52-compatible `expo-file-system` entry point. Jest passed 4/4 tests. Selected P0 Python tests passed 21/21 and `compileall` passed on Python 3.12.3, but CI specifies Python 3.11; the exact CI runtime still needs to be exercised. Six static source gates passed.
+Local Android JavaScript export passes under Node 20.20.2 after explicitly adding `query-string@9.5.1`, and `expo install --check` reports aligned dependencies. This is not a native Gradle/AAB build or a store-ready artifact.
 
-The full npm audit reported 97 findings: 3 critical, 66 high, 28 moderate. `npm audit --omit=dev` reported 76 production-tree findings: 2 critical, 46 high, 28 moderate. No `npm audit fix --force` was run; triage and compatible dependency updates are required before release.
+The client uses `EXPO_PUBLIC_API_BASE_URL` at EAS bundle time, then falls back to `https://my-twin-pro-production.up.railway.app`. The `app.json` `extra.API_URL` value is unused by current code and has no URL scheme. Railway runtime variables are not implicitly passed into EAS; the current fallback mitigates this only while that host remains correct.
 
-A targeted credential-pattern scan found only runtime credential-handling expressions and a test-fixture candidate; it did not print values. No `.env`, private-key, or named service-account credential file was found. This is not a specialized repository-history secret scan; run one before pushing a public branch.
+## Dependency and test gates
+
+The final npm audit reports 89 total vulnerabilities (29 moderate, 59 high, 1 critical); production-only reports 69 (29 moderate, 39 high, 1 critical). The CI production audit gate intentionally blocks on high or critical findings. `npm audit fix --force` was not run because the proposed core Expo/React Native changes cross major versions and require an SDK-aligned upgrade and full native validation.
+
+The complete backend suite on Python 3.11.16 reports 185 passed and 9 skipped. The skips are external TCMA integration cases; no live Supabase database or external service was used. Four deprecation warnings remain, including Pydantic `.dict()` and upstream Supabase/Starlette APIs.
+
+Backend requirements are range-based rather than fully locked. CI now exercises the full test suite, but production dependency resolution is not yet fully reproducible across time.
+
+A static route inventory and project-owner regression tests were added. No DAST or black-box authorization test against Railway, production RLS/storage-policy verification, cross-account test with real Supabase sessions, or specialized full Git-history secret scan has run.
 
 ## Roadmap decision
 
-The source tree was imported as requested on an isolated integration branch while retaining Git history. The baseline/patch recommendation in the team documents is inconsistent. Do not merge this branch to `main` or call it a release candidate until the differences, full CI, staging tests, Railway target, EAS project identity, dependency findings, and release decision are reviewed.
+The P0.05 source baseline is committed locally on the isolated integration branch; follow-up CI, dependency, test, and inventory changes are still local. The branch has not been pushed or merged. Phase 0 baseline import and the first local test gates are complete. Security/dependency remediation, EAS identity/build, Supabase staging and migrations, Railway deployment validation, user/device acceptance, and later cognitive/relationship/agency evolution gates remain open. Do not call the product production-ready or merge to `main` until the critical/high dependency gate and the external release gates are closed.
