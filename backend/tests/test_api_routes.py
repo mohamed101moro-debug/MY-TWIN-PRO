@@ -36,6 +36,9 @@ def test_health_endpoint_is_public_and_healthy():
         ("post", "/api/study/start", {"user_id": "test", "concept": "gravity", "language": "ar"}),
         ("get", "/api/pass/dashboard?user_id=test", None),
         ("get", "/api/smart-home/status?user_id=test", None),
+        ("get", "/api/v1/passport", None),
+        ("get", "/api/v1/fingerprint", None),
+        ("get", "/api/fingerprint/get?user_id=test", None),
     ],
 )
 def test_user_and_economy_routes_reject_anonymous_access(method, path, payload):
