@@ -4,7 +4,9 @@
 
 The source package is `MYTWIN-P0-EXECUTION-05-ACCESS-CONTROL-VERIFIER-2026-10-09.zip` (SHA-256 `a44aaccb193d314783e00269405ddeafac4ce23b2052b2bd0b4922fbdf84dc1b`). Its 883 source files were imported to repository root and matched by relative path and SHA-256 before integration notes and two compile fixes were added. `SOURCE_MANIFEST.json` records the archive's source-file digests, not subsequent integration-only edits.
 
-Branch `integration/p0-05-baseline-2026-10-10` was created from GitHub `main` commit `72953552fd45646647402094fc797e16598c17f4` (2026-09-05). The local baseline commit is `7d9beccf92b4c459ac3dea512aebcbc7a4fce9da`; follow-up commits add tests, CI hardening, dependency repair, and review notes. The latest local commit at the time of this record is `564ebc56fe37b1b00da91eb8f2033a6aa238cf45`. Git ancestry is preserved and `main` has not been modified. Nothing has been pushed.
+Branch `integration/p0-05-baseline-2026-10-10` was created from GitHub `main` commit `72953552fd45646647402094fc797e16598c17f4` (2026-09-05). The local baseline commit is `7d9beccf92b4c459ac3dea512aebcbc7a4fce9da`; follow-up local commits add tests, CI hardening, dependency repair, and review notes. Git ancestry is preserved and `main` has not been modified. The branch has not been pushed.
+
+**Roadmap conflict to resolve:** the attached execution roadmap says not to replace the source with the full P0-05 package; it directs the team to keep P0-05 as a separate branch/patch and merge only relevant changes. The user's implementation request asks to replace the entire repository with P0.05. The current branch reflects the full-package baseline, so no public push or merge should happen until the intended strategy is confirmed.
 
 ## Build and test evidence
 

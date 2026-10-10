@@ -26,6 +26,10 @@ Backend requirements are range-based rather than fully locked. CI now exercises 
 
 A static route inventory and project-owner regression tests were added. Gitleaks `8.30.1` scanned `origin/main..HEAD` with zero findings; two current-tree generic-pattern matches were reviewed as non-account values. GitHub Secret Scanning Alerts could not be read because the integration returned 403. No DAST or black-box authorization test against Railway, production RLS/storage-policy verification, or cross-account test with real Supabase sessions has run.
 
+## Roadmap strategy conflict
+
+The attached roadmap's Phase 0 explicitly prohibits replacing the source with the full P0-05 package and instead requires an isolated patch/branch, a diff, and selective integration of relevant changes. The user's latest instruction requests a full repository replacement. The local branch currently contains the full P0-05 baseline. No public push or merge has occurred; resolve this conflict before changing the remote repository.
+
 ## Roadmap decision
 
-The P0.05 source baseline and follow-up CI/test/dependency changes are committed locally on the isolated integration branch. The branch has not been pushed or merged. Phase 0 baseline import and first local test gates are complete. Security/dependency remediation, EAS identity/build, Supabase staging and migrations, Railway deployment validation, user/device acceptance, and later cognitive/relationship/agency evolution gates remain open. Do not call the product production-ready or merge to `main` until the critical/high dependency gate and the external release gates are closed.
+The P0.05 source baseline and follow-up CI/test/dependency changes are committed locally on the isolated integration branch. Phase 0 baseline import and first local test gates are complete. Security/dependency remediation, EAS identity/build, Supabase staging and migrations, Railway deployment validation, user/device acceptance, and later cognitive/relationship/agency evolution gates remain open. Do not call the product production-ready or merge to `main` until the baseline strategy, critical/high dependency gate, and external release gates are closed.
