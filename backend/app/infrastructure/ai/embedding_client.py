@@ -1,124 +1,113 @@
-"""
-Embedding Client v2.0 – توليد التضمينات (متعدد المزودين)
-=============================================================
-يدعم: Gemini، OpenAI، نموذج محلي (HuggingFace).
-مع تخزين مؤقت (Cache) وتكامل مع Metrics.
-"""
-import os, logging, hashlib
+"""Consent-gated cloud embeddings with owner/provider-scoped cache."""
+import asyncio
+import hashlib
+import logging
+import os
 from typing import List, Optional
 
 logger = logging.getLogger("embedding_client")
-
-# ============================================================
-# الإعدادات
-# ============================================================
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "gemini")  # gemini, openai, local
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "gemini")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-004")
 VECTOR_DIMENSION = int(os.getenv("VECTOR_DIMENSION", "768"))
+_cache: dict[str, list[float]] = {}
 
-# تخزين مؤقت بسيط
-_cache: dict = {}
 
-# ============================================================
-# مزود Gemini
-# ============================================================
-async def _gemini_embed(text: str) -> List[float]:
+def _has_consent(user_id: Optional[str], provider: str) -> bool:
+    try:
+        from app.privacy.cloud_ai_consent import get_granted_providers
+        return provider in get_granted_providers(user_id, "memory_embedding")
+    except Exception:
+        return False
+
+
+async def _gemini_embed(text: str, user_id: Optional[str] = None) -> List[float]:
+    if not _has_consent(user_id, "gemini_embedding"):
+        return []
     if not GEMINI_API_KEY:
-        raise ValueError("GEMINI_API_KEY غير متوفر")
-    from google import genai
-    client = genai.Client(api_key=GEMINI_API_KEY)
-    result = await client.aio.models.embed_content(
-        model=EMBEDDING_MODEL,
-        contents=text,
-    )
-    if result.embeddings and len(result.embeddings) > 0:
-        return list(result.embeddings[0].values)
+        return []
+    try:
+        from google import genai
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        result = await client.aio.models.embed_content(model=EMBEDDING_MODEL, contents=text)
+        if result.embeddings:
+            return list(result.embeddings[0].values)
+    except Exception as exc:
+        logger.warning("Gemini embedding failed (%s)", type(exc).__name__)
     return []
 
-# ============================================================
-# مزود OpenAI
-# ============================================================
-async def _openai_embed(text: str) -> List[float]:
+
+async def _openai_embed(text: str, user_id: Optional[str] = None) -> List[float]:
+    if not _has_consent(user_id, "openai_embedding"):
+        return []
     if not OPENAI_API_KEY:
-        raise ValueError("OPENAI_API_KEY غير متوفر")
-    import openai
-    client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
-    response = await client.embeddings.create(
-        model="text-embedding-3-small",
-        input=text,
-    )
-    if response.data:
-        return response.data[0].embedding
+        return []
+    try:
+        import openai
+        client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
+        response = await client.embeddings.create(model="text-embedding-3-small", input=text)
+        if response.data:
+            return response.data[0].embedding
+    except Exception as exc:
+        logger.warning("OpenAI embedding failed (%s)", type(exc).__name__)
     return []
 
-# ============================================================
-# مزود محلي (HuggingFace)
-# ============================================================
+
 async def _local_embed(text: str) -> List[float]:
-    """توليد التضمين محلياً باستخدام HuggingFace (إن وُجد)"""
+    """Compute embeddings locally; no cloud provider consent is needed."""
     try:
         from sentence_transformers import SentenceTransformer
-        import asyncio
         model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         embeddings = await loop.run_in_executor(None, model.encode, text)
         return embeddings.tolist()
     except ImportError:
-        logger.error("sentence_transformers غير مثبتة – الرجاء تثبيتها للوضع المحلي")
-        return []
+        logger.warning("Local sentence-transformers model unavailable")
+    except Exception as exc:
+        logger.warning("Local embedding failed (%s)", type(exc).__name__)
+    return []
 
-# ============================================================
-# دالة التوليد الموحدة
-# ============================================================
-async def generate_embedding(text: str) -> List[float]:
-    """
-    توليد تضمين للنص.
-    يستخدم التخزين المؤقت لتجنب إعادة التوليد.
-    """
-    # 1. فحص التخزين المؤقت
-    cache_key = hashlib.md5(text.encode()).hexdigest()
+
+async def generate_embedding(text: str, user_id: Optional[str] = None) -> List[float]:
+    """Generate one vector; cloud use requires matching owner, purpose and provider consent."""
+    if not text or not text.strip():
+        return []
+    provider = EMBEDDING_PROVIDER if EMBEDDING_PROVIDER in {"gemini", "openai", "local"} else "gemini"
+    if provider == "local":
+        cache_scope = "local"
+    else:
+        provider_key = "gemini_embedding" if provider == "gemini" else "openai_embedding"
+        if not user_id or not _has_consent(user_id, provider_key):
+            return []
+        cache_scope = f"{user_id}:{provider_key}"
+
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    cache_key = f"{cache_scope}:{digest}"
     if cache_key in _cache:
         return _cache[cache_key]
 
-    # 2. محاولة التوليد حسب المزود
-    try:
-        if EMBEDDING_PROVIDER == "openai":
-            vector = await _openai_embed(text)
-        elif EMBEDDING_PROVIDER == "local":
-            vector = await _local_embed(text)
-        else:  # gemini
-            vector = await _gemini_embed(text)
+    if provider == "local":
+        vector = await _local_embed(text)
+    elif provider == "openai":
+        vector = await _openai_embed(text, user_id=user_id)
+    else:
+        vector = await _gemini_embed(text, user_id=user_id)
 
-        if vector:
-            # تخزين في الكاش
-            if len(_cache) > 10000:
-                _cache.clear()
-            _cache[cache_key] = vector
+    if vector:
+        if len(_cache) > 10000:
+            _cache.clear()
+        _cache[cache_key] = vector
+        try:
+            from app.observability.metrics_service import metrics
+            metrics.record_request("embedding", 200, 0)
+        except Exception:
+            pass
+    return vector
 
-            # تسجيل المقياس
-            try:
-                from app.observability.metrics_service import metrics
-                metrics.record_request("embedding", 200, 0)
-            except:
-                pass
 
-            return vector
-    except Exception as e:
-        logger.error(f"توليد التضمين فشل ({EMBEDDING_PROVIDER}): {e}")
+async def generate_embeddings_batch(texts: List[str], user_id: Optional[str] = None) -> List[List[float]]:
+    return [await generate_embedding(text, user_id=user_id) for text in texts]
 
-    # 3. احتياطي: تضمين وهمي
-    logger.warning("استخدام تضمين وهمي (Mock Embedding)")
-    h = hashlib.md5(text.encode()).digest()
-    return list(h.ljust(VECTOR_DIMENSION // 8, b'\x00'))[:VECTOR_DIMENSION]
 
-async def generate_embeddings_batch(texts: List[str]) -> List[List[float]]:
-    """توليد تضمينات لمجموعة نصوص"""
-    results = []
-    for text in texts:
-        emb = await generate_embedding(text)
-        results.append(emb)
-    return results
-
-logger.info(f"✅ Embedding Client v2.0 initialized (provider: {EMBEDDING_PROVIDER})")
+logger.info("Embedding Client initialized (cloud egress requires per-user consent)")

@@ -15,6 +15,14 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 DEFAULT_PROVIDER = os.getenv("STREAMING_PROVIDER", "gemini")
 
+
+def _has_stream_consent(user_id: Optional[str], provider: str) -> bool:
+    try:
+        from app.privacy.cloud_ai_consent import get_granted_providers
+        return provider in get_granted_providers(user_id, "text_generation")
+    except Exception:
+        return False
+
 async def generate_stream(
     prompt: str,
     system_prompt: str = "",
@@ -27,20 +35,24 @@ async def generate_stream(
     يدعم: Gemini, Groq, OpenRouter.
     """
     provider = provider or DEFAULT_PROVIDER
+    if provider not in {"gemini", "groq", "openrouter"} or not _has_stream_consent(user_id, provider):
+        yield "أستطيع متابعة الحديث محلياً، لكن لم تُمنح موافقة الإرسال إلى مزود النص السحابي."
+        return
 
     if provider == "gemini":
-        async for chunk in _gemini_stream(prompt, system_prompt, language):
+        async for chunk in _gemini_stream(prompt, system_prompt, language, user_id=user_id):
             yield chunk
     elif provider == "groq":
-        async for chunk in _groq_stream(prompt, system_prompt, language):
+        async for chunk in _groq_stream(prompt, system_prompt, language, user_id=user_id):
             yield chunk
     elif provider == "openrouter":
-        async for chunk in _openrouter_stream(prompt, system_prompt, language):
+        async for chunk in _openrouter_stream(prompt, system_prompt, language, user_id=user_id):
             yield chunk
-    else:
-        yield "أنا هنا معك 💜 (المزوّد غير مدعوم)"
 
-async def _gemini_stream(prompt: str, system_prompt: str, lang: str) -> AsyncGenerator[str, None]:
+async def _gemini_stream(prompt: str, system_prompt: str, lang: str, user_id: Optional[str] = None) -> AsyncGenerator[str, None]:
+    if not _has_stream_consent(user_id, "gemini"):
+        yield "موافقة Gemini غير متاحة لهذا الطلب."
+        return
     if not GEMINI_API_KEY:
         yield "خدمة Gemini غير متاحة حالياً 💜"
         return
@@ -59,7 +71,10 @@ async def _gemini_stream(prompt: str, system_prompt: str, lang: str) -> AsyncGen
         logger.error(f"Gemini stream error: {e}")
         yield "أواجه صعوبة تقنية 💜"
 
-async def _groq_stream(prompt: str, system_prompt: str, lang: str) -> AsyncGenerator[str, None]:
+async def _groq_stream(prompt: str, system_prompt: str, lang: str, user_id: Optional[str] = None) -> AsyncGenerator[str, None]:
+    if not _has_stream_consent(user_id, "groq"):
+        yield "موافقة Groq غير متاحة لهذا الطلب."
+        return
     if not GROQ_API_KEY:
         yield "خدمة Groq غير متاحة حالياً 💜"
         return
@@ -84,7 +99,10 @@ async def _groq_stream(prompt: str, system_prompt: str, lang: str) -> AsyncGener
         logger.error(f"Groq stream error: {e}")
         yield "أواجه صعوبة تقنية 💜"
 
-async def _openrouter_stream(prompt: str, system_prompt: str, lang: str) -> AsyncGenerator[str, None]:
+async def _openrouter_stream(prompt: str, system_prompt: str, lang: str, user_id: Optional[str] = None) -> AsyncGenerator[str, None]:
+    if not _has_stream_consent(user_id, "openrouter"):
+        yield "موافقة OpenRouter غير متاحة لهذا الطلب."
+        return
     if not OPENROUTER_API_KEY:
         yield "خدمة OpenRouter غير متاحة حالياً 💜"
         return

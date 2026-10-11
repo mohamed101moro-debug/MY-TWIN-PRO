@@ -1,21 +1,22 @@
 """
 Avatar Routes v3.0 – دعم استرجاع الأفاتار حسب الجنس
 """
-from fastapi import APIRouter, Query, Body
-from pydantic import BaseModel
+from fastapi import APIRouter, Query, Body, Depends, HTTPException
+from pydantic import BaseModel, Field
 from typing import Optional
+from app.api.dependencies.auth import require_request_owner
 
-router = APIRouter(prefix="/api/avatar", tags=["avatar"])
+router = APIRouter(prefix="/api/avatar", tags=["avatar"], dependencies=[Depends(require_request_owner)])
 
 class AvatarRequest(BaseModel):
     user_id: str
-    user_name: str = "توأمي"
+    user_name: str = Field(default="توأمي", max_length=80)
     style: str = "realistic"
     language: str = "ar"
 
 class GenerateAvatarsRequest(BaseModel):
     user_id: str
-    user_name: str
+    user_name: str = Field(max_length=80)
     style: str = "realistic"
     language: str = "ar"
 
@@ -23,12 +24,16 @@ class GenerateAvatarsRequest(BaseModel):
 async def generate(req: AvatarRequest):
     from app.features.avatar_engine.avatar_engine import avatar_engine
     result = await avatar_engine.generate_avatars(req.user_id, req.user_name, req.style, req.language)
+    if result.get("status") == "consent_required":
+        raise HTTPException(403, "يلزم اختيار موافقة توليد الصور قبل إنشاء الأفاتار.")
     return {"status": "success", "data": result, "image_url": result.get("female", {}).get("image_url")}
 
 @router.post("/generate-avatars")
 async def generate_avatars(req: GenerateAvatarsRequest):
     from app.features.avatar_engine.avatar_engine import avatar_engine
     result = await avatar_engine.generate_avatars(req.user_id, req.user_name, req.style, req.language)
+    if result.get("status") == "consent_required":
+        raise HTTPException(403, "يلزم اختيار موافقة توليد الصور قبل إنشاء الأفاتار.")
     return {"status": "success", "female": result.get("female", {}), "male": result.get("male", {})}
 
 @router.get("/get")

@@ -121,6 +121,9 @@ class ProactiveAwarenessSystem:
     async def _send_push(self, user_id: str, notification: Dict[str, Any]):
         if not self._onesignal_app_id or not self._onesignal_api_key:
             return
+        from app.infrastructure.push.preferences import proactive_notifications_enabled
+        if not proactive_notifications_enabled(user_id):
+            return
         try:
             from app.infrastructure.database.supabase_client import get_db
             db = get_db()

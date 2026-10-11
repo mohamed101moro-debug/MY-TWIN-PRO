@@ -62,11 +62,14 @@ class ProactiveIntelligence:
         if not ONESIGNAL_APP_ID or not ONESIGNAL_API_KEY:
             logger.debug("OneSignal keys missing – push skipped")
             return False
+        from app.infrastructure.push.preferences import proactive_notifications_enabled
+        if not proactive_notifications_enabled(user_id):
+            return False
 
         try:
             from app.infrastructure.database.supabase_client import get_db
             db = get_db()
-            profile = db.table("profiles").select("push_token").eq("id", user_id).single().execute()
+            profile = db.table("profiles").select("push_token,push_settings").eq("id", user_id).single().execute()
             push_token = profile.data.get("push_token") if profile.data else None
             if not push_token:
                 return False

@@ -25,6 +25,7 @@ def route_modules():
         creator=importlib.import_module("app.api.routes.creator_routes"),
         dreams=importlib.import_module("app.api.routes.dream_routes"),
         business=importlib.import_module("app.api.routes.business_routes"),
+        avatar=importlib.import_module("app.api.routes.avatar_routes"),
         code_lab=importlib.import_module("app.api.routes.code_lab_routes"),
         image_lab=importlib.import_module("app.api.routes.image_lab_routes"),
         life_coach=importlib.import_module("app.api.routes.life_coach_routes"),
@@ -232,7 +233,7 @@ def test_request_owner_accepts_only_authenticated_identity(route_modules):
 
 def test_all_user_owned_feature_routers_install_the_shared_guard(route_modules):
     routers = (
-        route_modules.creator, route_modules.dreams, route_modules.business,
+        route_modules.creator, route_modules.dreams, route_modules.business, route_modules.avatar,
         route_modules.code_lab, route_modules.image_lab, route_modules.life_coach,
         route_modules.study, route_modules.smart_home, route_modules.awareness,
         route_modules.referral, route_modules.meta, route_modules.task_routes,

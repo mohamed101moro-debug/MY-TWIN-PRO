@@ -25,6 +25,9 @@ class ProactiveNotifications:
 
     async def send_proactive_message(self, user_id: str, message: str, data: Dict = None) -> bool:
         """إرسال إشعار استباقي للمستخدم"""
+        from app.infrastructure.push.preferences import proactive_notifications_enabled
+        if not proactive_notifications_enabled(user_id):
+            return False
         if not self.onesignal_app_id or not self.onesignal_api_key:
             logger.warning("OneSignal credentials not configured")
             return False

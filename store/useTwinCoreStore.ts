@@ -65,7 +65,7 @@ const initialState = {
   lang: 'ar' as Lang,
   calmMode: false,
   voiceEnabled: true,
-  notificationsEnabled: true,
+  notificationsEnabled: false,
   memoryRetentionEnabled: true,
   voicePersonality: 'friend' as VoicePersonality,
   voiceSpeed: 1.0,
