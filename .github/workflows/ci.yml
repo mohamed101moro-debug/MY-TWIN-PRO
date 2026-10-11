@@ -4,13 +4,17 @@ permissions:
   contents: read
 jobs:
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # Official actions pinned to reviewed release commits (Node 24 compatible).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          node-version: 20
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .node-version
           cache: npm
+          cache-dependency-path: package-lock.json
       - run: npm ci --legacy-peer-deps
       - name: TypeScript
         run: npx tsc --noEmit --skipLibCheck
@@ -20,20 +24,28 @@ jobs:
         run: npx expo export --platform android --output-dir /tmp/mytwin-expo-export
       - name: Expo SDK dependency alignment
         run: npx expo install --check
+      - name: Expo config and EAS identity
+        run: |
+          npx expo config --type public --json > "$RUNNER_TEMP/mytwin-expo-config.json"
+          node scripts/validate_expo_config.cjs "$RUNNER_TEMP/mytwin-expo-config.json"
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       # Isolated placeholders: tests must use fakes and must never reach a live project.
       SUPABASE_URL: https://example.invalid
       SUPABASE_SERVICE_KEY: local-test-only-key
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          python-version: "3.11"
-      - run: pip install -q -r backend/requirements-test.txt
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: backend/requirements-test.lock
+      - run: pip install --require-hashes -r backend/requirements-test.lock
       - name: Validate Railway repository-root context
         run: python scripts/validate_railway_build_context.py
       - name: Python compile
