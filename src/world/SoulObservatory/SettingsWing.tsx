@@ -6,6 +6,7 @@ import { useRTL } from '../../../lib/useRTL';
 import { SPACE, RADIUS } from '../../../src/design/tokens/spacing';
 import { Globe, Moon, Volume2, Database, Shield, Bell } from 'lucide-react-native';
 import { CloudAIConsentSnapshot, CloudAIPurposeConsent, getCloudAIConsents, setCloudAIConsent } from '../../../src/services/CloudAIConsentService';
+import { getPushSettings, PushSettings, savePushSettings } from '../../../src/services/PushPreferenceService';
 
 function CloudAIConsentSettings({ colors, isRTL }: { colors: any; isRTL: boolean }) {
   const [snapshot, setSnapshot] = useState<CloudAIConsentSnapshot | null>(null);
@@ -86,6 +87,40 @@ export default function SettingsWing() {
   const { colors } = useAppTheme();
   const { calmMode, toggleCalmMode, lang, setLang, theme, toggleTheme, voiceEnabled, setVoiceEnabled, notificationsEnabled, setNotificationsEnabled, memoryRetentionEnabled, setMemoryRetentionEnabled } = useTwinCoreStore();
   const isDark = theme === 'dark';
+  const [pushSettings, setPushSettings] = useState<PushSettings | null>(null);
+  const [pushError, setPushError] = useState<string | null>(null);
+  const [pushPending, setPushPending] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getPushSettings().then((settings) => {
+      if (!active) return;
+      setPushSettings(settings);
+      setNotificationsEnabled(settings.proactive_enabled);
+    }).catch(() => {
+      if (!active) return;
+      setPushSettings(null);
+      setNotificationsEnabled(false);
+      setPushError(rtl.isRTL ? 'تعذر تحميل تفضيل الإشعارات من الحساب.' : 'Could not load notification preference from your account.');
+    });
+    return () => { active = false; };
+  }, [rtl.isRTL, setNotificationsEnabled]);
+
+  const changePushPreference = async (enabled: boolean) => {
+    if (!pushSettings || pushPending) return;
+    const next = { ...pushSettings, proactive_enabled: enabled };
+    setPushPending(true);
+    setPushError(null);
+    try {
+      await savePushSettings(next);
+      setPushSettings(next);
+      setNotificationsEnabled(enabled);
+    } catch {
+      setPushError(rtl.isRTL ? 'لم يُحفظ تفضيل الإشعارات. لم يتغير الإعداد.' : 'Could not save notification preference. The setting was not changed.');
+    } finally {
+      setPushPending(false);
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -140,8 +175,9 @@ export default function SettingsWing() {
             <Bell size={18} stroke={colors.accent} />
             <Text style={[styles.rowLabel, { color: colors.text }]}>{rtl.isRTL ? 'الإشارات' : 'Signals'}</Text>
           </View>
-          <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} trackColor={{ false: colors.border, true: colors.accent + '50' }} thumbColor={notificationsEnabled ? colors.accent : colors.textSecondary} />
+          <Switch value={pushSettings ? notificationsEnabled : false} disabled={!pushSettings || pushPending} onValueChange={(value) => void changePushPreference(value)} trackColor={{ false: colors.border, true: colors.accent + '50' }} thumbColor={notificationsEnabled ? colors.accent : colors.textSecondary} />
         </View>
+        {pushError ? <Text accessibilityRole="alert" style={[styles.consentNotice, { color: colors.textSecondary }]}>{pushError}</Text> : null}
       </View>
 
       <View style={styles.section}>

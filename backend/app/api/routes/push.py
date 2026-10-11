@@ -14,7 +14,7 @@ class PushTokenBody(BaseModel):
 class PushSettingsBody(BaseModel):
     sound_enabled: bool = True
     vibration_enabled: bool = True
-    proactive_enabled: bool = True
+    proactive_enabled: bool = False
     categories: Optional[list] = None
 @router.put("/token")
 async def update_push_token(body: PushTokenBody, user_id: str = Depends(get_current_user_id)):
@@ -46,7 +46,10 @@ async def update_push_settings(body: PushSettingsBody, user_id: str = Depends(ge
         raise HTTPException(500, str(e))
 @router.post("/send-proactive")
 async def send_proactive_notification(user_id: str = Depends(get_current_user_id)):
-    p = get_db().table("profiles").select("push_token").eq("id", user_id).single().execute()
+    from app.infrastructure.push.preferences import proactive_notifications_enabled
+    if not proactive_notifications_enabled(user_id):
+        raise HTTPException(403, "الإشعارات الاستباقية غير مفعلة لهذا الحساب.")
+    p = get_db().table("profiles").select("push_token,push_settings").eq("id", user_id).single().execute()
     if not p.data or not p.data.get("push_token"):
         raise HTTPException(400, "لم يتم تسجيل جهاز للإشعارات بعد")
     from app.infrastructure.push.expo_push import send_push

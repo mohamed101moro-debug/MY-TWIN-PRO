@@ -8,7 +8,7 @@ export type CloudAIProviderConsent = {
 };
 
 export type CloudAIPurposeConsent = {
-  key: 'text_generation' | 'image_generation' | 'image_analysis' | 'image_editing' | 'voice_synthesis';
+  key: 'text_generation' | 'image_generation' | 'image_analysis' | 'image_editing' | 'voice_synthesis' | 'audio_transcription' | 'memory_embedding';
   title: string;
   description: string;
   providers: CloudAIProviderConsent[];

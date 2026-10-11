@@ -18,6 +18,8 @@ PURPOSE_PROVIDERS: dict[str, tuple[str, ...]] = {
     "image_analysis": ("gemini",),
     "image_editing": ("huggingface", "pollinations"),
     "voice_synthesis": ("elevenlabs", "edge_tts"),
+    "audio_transcription": ("groq", "gemini"),
+    "memory_embedding": ("gemini_embedding", "openai_embedding"),
 }
 PROVIDER_LABELS = {
     "gemini": "Google Gemini",
@@ -28,6 +30,8 @@ PROVIDER_LABELS = {
     "pollinations": "Pollinations",
     "elevenlabs": "ElevenLabs",
     "edge_tts": "Microsoft Edge TTS",
+    "gemini_embedding": "Google Gemini Embeddings",
+    "openai_embedding": "OpenAI Embeddings",
 }
 PURPOSE_LABELS = {
     "text_generation": ("توليد النص", "قد يُرسل نص طلبك والسياق اللازم إلى المزود المحدد."),
@@ -35,6 +39,8 @@ PURPOSE_LABELS = {
     "image_analysis": ("تحليل الصور", "قد تُرسل الصورة وتعليماتك إلى المزود المحدد للتحليل."),
     "image_editing": ("تحرير الصور", "قد تُرسل الصورة إلى المزود المحدد لتنفيذ عملية التحرير."),
     "voice_synthesis": ("تحويل النص إلى صوت", "قد يُرسل النص إلى مزود الصوت المحدد لإنشاء ملف صوتي."),
+    "audio_transcription": ("تفريغ الصوت", "قد يُرسل التسجيل الصوتي إلى مزود التفريغ المحدد لتحويله إلى نص."),
+    "memory_embedding": ("فهرسة الذاكرة", "قد يُرسل النص إلى مزود embeddings المحدد لتجهيزه للبحث الدلالي."),
 }
 
 

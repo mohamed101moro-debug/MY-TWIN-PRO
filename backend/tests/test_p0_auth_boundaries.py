@@ -111,11 +111,12 @@ def test_verify_token_requires_bearer_dependency_and_does_not_trust_claimed_user
     assert error.value.status_code == 404
 
 
-def test_cloud_stt_is_disabled_until_per_user_consent_exists():
+def test_cloud_stt_requires_per_user_provider_consent(monkeypatch):
     stt_routes = importlib.import_module("app.api.routes.stt_routes")
+    monkeypatch.setattr(stt_routes, "get_granted_providers", lambda *_args: set())
     with pytest.raises(HTTPException) as error:
-        asyncio.run(stt_routes.transcribe_audio(stt_routes.STTRequest(audio_base64="abcdefghij"), tier="pro"))
-    assert error.value.status_code == 503
+        asyncio.run(stt_routes.transcribe_audio(stt_routes.STTRequest(audio_base64="YWFhYWFhYWFhYWFh"), user_id="user-A"))
+    assert error.value.status_code == 403
     assert "موافقة" in error.value.detail
 
 
