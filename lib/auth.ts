@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiPost, cancelPendingRequests, setToken } from './httpClient';
+import { apiPost, cancelPendingRequests } from './httpClient';
 import { clearLocalSessionState } from './sessionBoundary';
+import { getAccessToken, setAccessToken } from './credentialStore';
 import { useTwinCoreStore } from '../store/useTwinCoreStore';
 import { unifiedBrainBridge } from '../src/core/UnifiedBrainBridge';
 import * as WebBrowser from 'expo-web-browser';
@@ -8,7 +9,6 @@ import * as AuthSession from 'expo-auth-session';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const TOKEN_KEY = 'mytwin-token';
 const USER_KEY = 'mytwin-user';
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -16,12 +16,17 @@ export async function saveAuthData(token: string, userId: string): Promise<void>
   const previousUserId = await getUserId();
   if (previousUserId !== userId) await clearLocalSessionState();
   else cancelPendingRequests();
-  await AsyncStorage.multiSet([[TOKEN_KEY, token], [USER_KEY, userId]]);
-  await setToken(token);
+  try {
+    await setAccessToken(token);
+    await AsyncStorage.setItem(USER_KEY, userId);
+  } catch (error) {
+    await clearLocalSessionState().catch(() => undefined);
+    throw error;
+  }
   useTwinCoreStore.getState().setAuth(userId);
   unifiedBrainBridge.setUserId(userId);
 }
-export async function getToken(): Promise<string | null> { return AsyncStorage.getItem(TOKEN_KEY); }
+export async function getToken(): Promise<string | null> { return getAccessToken(); }
 export async function getUserId(): Promise<string | null> { return AsyncStorage.getItem(USER_KEY); }
 export async function removeToken(): Promise<void> { await clearLocalSessionState(); }
 
@@ -40,8 +45,6 @@ export async function signup(email: string, password: string, twinName: string, 
 export async function googleLogin(lang: string = 'ar'): Promise<any> {
   if (!GOOGLE_CLIENT_ID) throw new Error('Google sign-in is not configured for this build.');
   const redirectUri = AuthSession.makeRedirectUri({ scheme: 'mytwin' });
-  // ⚠️ هذا السطر هو ما يجب تسجيله حرفيًا في Google Console:
-  console.log('[GoogleLogin] REGISTER THIS redirect_uri IN GOOGLE CONSOLE =>', redirectUri);
   const discovery = await AuthSession.fetchDiscoveryAsync('https://accounts.google.com');
   const request = new AuthSession.AuthRequest({
     clientId: GOOGLE_CLIENT_ID,

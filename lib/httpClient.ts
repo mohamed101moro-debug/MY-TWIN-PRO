@@ -3,10 +3,10 @@
  * عميل HTTP متكامل مع timeout + retry + streaming
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import Constants from 'expo-constants';
 import { resolveApiBaseUrl } from '../engine/config/apiBaseUrl';
+import { clearCredentialStorage, getAccessToken, setAccessToken } from './credentialStore';
 
 export const API_BASE_URL = resolveApiBaseUrl(
   process.env.EXPO_PUBLIC_API_BASE_URL,
@@ -19,7 +19,6 @@ export const API_BASE_URL = resolveApiBaseUrl(
 const TIMEOUT_MS       = 12000; // 12 ثانية - يكفي لـ Railway cold start
 const RETRY_COUNT      = 2;
 const RETRY_DELAY_MS   = 800;
-const TOKEN_KEY        = 'mytwin-token';
 const activeControllers = new Set<AbortController>();
 let requestGeneration = 0;
 
@@ -34,18 +33,15 @@ export function cancelPendingRequests(): void {
 // إدارة الـ Token
 // ================================================================
 export async function setToken(token: string): Promise<void> {
-  try { await AsyncStorage.setItem(TOKEN_KEY, token); }
-  catch (e) { console.warn('[HTTP] setToken failed:', e); }
+  await setAccessToken(token);
 }
 
 export async function removeToken(): Promise<void> {
-  try { await AsyncStorage.removeItem(TOKEN_KEY); }
-  catch (e) { console.warn('[HTTP] removeToken failed:', e); }
+  await clearCredentialStorage();
 }
 
 async function getToken(): Promise<string | null> {
-  try { return await AsyncStorage.getItem(TOKEN_KEY); }
-  catch { return null; }
+  return getAccessToken();
 }
 
 // ================================================================
