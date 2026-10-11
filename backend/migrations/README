@@ -1,1 +1,4 @@
 Generic single-database configuration.
+
+
+20261011_p0_cloud_ai_consent.sql — apply on staging only after provider disclosure/legal policy review. The runtime feature stays fail-closed unless MYTWIN_CLOUD_AI_APPROVED_POLICY_VERSION exactly matches the code's POLICY_VERSION. Account export/deletion inventory includes this table in code; staging verification of RLS/grants and end-to-end export/deletion schema checks is still required before release.

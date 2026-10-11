@@ -60,6 +60,14 @@ class AvatarEngine:
         self, user_id: str, user_name: str, style: str = "realistic", language: str = "ar"
     ) -> Dict[str, Any]:
         """توليد أفاتارين (ذكر وأنثى) لكل مستخدم جديد"""
+        try:
+            from app.privacy.cloud_ai_consent import get_granted_providers
+            approved = get_granted_providers(user_id, "image_generation")
+        except Exception:
+            approved = set()
+        if not approved:
+            return {"status": "consent_required", "purpose": "image_generation"}
+
         identity_traits = []
         current_emotion = "neutral"
         
@@ -79,14 +87,14 @@ class AvatarEngine:
             
             prompt = f"""Create a digital avatar of a {gender_en} named '{user_name}'. Traits: {traits_text}. Emotion: {current_emotion}. Expression: {EMOTION_TO_EXPRESSION.get(current_emotion, EMOTION_TO_EXPRESSION['neutral'])}. Style: {AVATAR_STYLES.get(style, 'realistic')}. Colors: {EMOTION_TO_COLORS.get(current_emotion, EMOTION_TO_COLORS['neutral'])}. Make it warm, engaging, and conscious-looking."""
             
-            image_url = await self._generate_image(prompt, style)
+            image_url = await self._generate_image(prompt, style, user_id=user_id)
             
             # توليد تعابير إضافية
             emotion_variants = {}
             for emotion in ALL_EMOTIONS[:4]:
                 if emotion == current_emotion: continue
                 emotion_prompt = f"""Create the same avatar of a {gender_en} named '{user_name}', but with {EMOTION_TO_EXPRESSION.get(emotion, 'neutral')} expression. Colors: {EMOTION_TO_COLORS.get(emotion, EMOTION_TO_COLORS['neutral'])}. Keep the same face and style."""
-                emotion_url = await self._generate_image(emotion_prompt, style)
+                emotion_url = await self._generate_image(emotion_prompt, style, user_id=user_id)
                 if emotion_url and emotion_url != "default_avatar":
                     emotion_variants[emotion] = emotion_url
             
@@ -130,23 +138,33 @@ class AvatarEngine:
         variants = avatar.get("emotion_variants", {})
         return variants.get(emotion, avatar.get("image_url"))
     
-    async def _generate_image(self, prompt: str, style: str) -> str:
-        """توليد صورة الأفاتار: Pollinations.ai أساسي، Gemini احتياطي"""
+    async def _generate_image(self, prompt: str, style: str, user_id: str | None = None) -> str:
+        """Generate only through an image provider explicitly approved by this owner."""
         try:
-            encoded = prompt.replace(" ", "%20")
-            url = f"https://image.pollinations.ai/prompt/{encoded}?width=512&height=512&nologo=true"
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                    if resp.status == 200:
-                        image_bytes = await resp.read()
-                        return f"data:image/png;base64,{base64.b64encode(image_bytes).decode('utf-8')}"
-        except Exception as e:
-            logger.warning(f"Pollinations.ai avatar failed: {e}")
-        
-        try:
-            from app.infrastructure.ai.ai_gateway import ai_gateway
-            key = ai_gateway.key_manager.get_key("gemini_image")
-            if key:
+            from app.privacy.cloud_ai_consent import get_granted_providers
+            approved = get_granted_providers(user_id, "image_generation")
+        except Exception:
+            approved = set()
+
+        if "pollinations" in approved:
+            try:
+                from urllib.parse import quote
+                encoded = quote(prompt, safe="")
+                url = f"https://image.pollinations.ai/prompt/{encoded}?width=512&height=512&nologo=true"
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                        if resp.status == 200:
+                            image_bytes = await resp.read()
+                            return f"data:image/png;base64,{base64.b64encode(image_bytes).decode('utf-8')}"
+            except Exception as exc:
+                logger.warning("Pollinations avatar failed (%s)", type(exc).__name__)
+
+        if "gemini_image" in approved:
+            try:
+                from app.infrastructure.ai.ai_gateway import ai_gateway
+                key = ai_gateway.key_manager.get_key("gemini_image")
+                if not key:
+                    return "default_avatar"
                 from google import genai
                 client = genai.Client(api_key=key)
                 loop = asyncio.get_running_loop()
@@ -156,9 +174,11 @@ class AvatarEngine:
                         contents=f"Generate an avatar: {prompt}"
                     )), timeout=30.0
                 )
-                if response and hasattr(response, 'text'): return response.text
-        except: pass
-        
+                if response and hasattr(response, "text"):
+                    return response.text
+            except Exception as exc:
+                logger.warning("Gemini avatar failed (%s)", type(exc).__name__)
+
         return "default_avatar"
     
     async def get_avatar(self, user_id: str) -> Optional[Dict[str, Any]]:

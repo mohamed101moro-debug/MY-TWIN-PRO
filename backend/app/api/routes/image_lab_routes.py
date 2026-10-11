@@ -2,7 +2,7 @@
 Image Lab API Routes v2.0 — توليد وتحليل وتعديل الصور
 """
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from app.api.dependencies.auth import require_request_owner
 
@@ -28,19 +28,25 @@ class EnhanceRequest(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     user_id: str
-    image_base64: str
+    image_base64: str = Field(max_length=8_400_000)
     language: str = "ar"
+    mime_type: str = "image/jpeg"
 
 class EditRequest(BaseModel):
     user_id: str
     operation: str
-    image_base64: str
+    image_base64: str = Field(max_length=8_400_000)
 
 @router.post("/generate")
 async def generate(req: ImageRequest):
     try:
         from app.features.image_lab.image_orchestrator import image_lab
-        return await image_lab.generate(req.user_id, req.prompt, req.style, req.lighting, req.camera, req.negative, req.language)
+        result = await image_lab.generate(req.user_id, req.prompt, req.style, req.lighting, req.camera, req.negative, req.language)
+        if result.get("status") == "consent_required":
+            raise HTTPException(403, "يلزم اختيار موافقة توليد الصور لهذا المزود قبل إرسال الوصف.")
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(500, str(e))
 
@@ -56,7 +62,12 @@ async def enhance_prompt(req: EnhanceRequest):
 async def analyze(req: AnalyzeRequest):
     try:
         from app.features.image_lab.image_orchestrator import image_lab
-        return await image_lab.analyze_image(req.image_base64, req.language)
+        result = await image_lab.analyze_image(req.image_base64, req.language, user_id=req.user_id, mime_type=req.mime_type)
+        if result.get("status") == "consent_required":
+            raise HTTPException(403, "يلزم اختيار موافقة تحليل الصور عبر Google Gemini قبل إرسال الصورة.")
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(500, str(e))
 
@@ -64,7 +75,12 @@ async def analyze(req: AnalyzeRequest):
 async def edit(req: EditRequest):
     try:
         from app.features.image_lab.image_orchestrator import image_lab
-        return await image_lab.edit_image(req.operation, req.image_base64)
+        result = await image_lab.edit_image(req.operation, req.image_base64, user_id=req.user_id)
+        if result.get("status") == "consent_required":
+            raise HTTPException(403, "يلزم اختيار موافقة تحرير الصور للمزود المستخدم.")
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(500, str(e))
 

@@ -1,77 +1,64 @@
-"""
-IMAGE ANALYZER v2.0 – تحليل الصور الكامل (100%)
-====================================================
-- Describe (وصف تفصيلي)
-- Tags (كلمات مفتاحية)
-- OCR (استخراج النص)
-- Object Detection (اكتشاف العناصر)
-"""
-import logging
-from typing import Dict, Any, List
+"""Owner-scoped image analysis through the consent-gated Gemini Vision gateway."""
+import base64
+import json
+import re
+from typing import Any
 
-logger = logging.getLogger(__name__)
+
+MAX_IMAGE_BYTES = 6 * 1024 * 1024
+
 
 class ImageAnalyzer:
-    def __init__(self):
-        self.ai_route = None
-
-    async def describe(self, image_base64: str, language: str = "ar") -> Dict[str, Any]:
-        """وصف تفصيلي للصورة"""
-        if not self.ai_route:
-            return {"description": ""}
+    async def full_analysis(
+        self,
+        image_base64: str,
+        language: str = "ar",
+        user_id: str | None = None,
+        mime_type: str = "image/jpeg",
+    ) -> dict[str, Any]:
+        if not user_id:
+            return {"status": "consent_required", "purpose": "image_analysis"}
         try:
-            prompt = f"Describe this image in detail. Language: {language}."
-            text, _ = await self.ai_route(prompt, task="vision")
-            return {"description": text or ""}
-        except:
-            return {"description": ""}
+            image_bytes = base64.b64decode(image_base64, validate=True)
+        except Exception:
+            return {"status": "invalid_image", "message": "صيغة الصورة غير صالحة."}
+        if not image_bytes or len(image_bytes) > MAX_IMAGE_BYTES:
+            return {"status": "invalid_image", "message": "حجم الصورة غير صالح أو يتجاوز الحد المسموح."}
+        if mime_type not in {"image/jpeg", "image/png", "image/webp"}:
+            return {"status": "invalid_image", "message": "نوع الصورة غير مدعوم."}
 
-    async def extract_tags(self, image_base64: str, language: str = "ar") -> Dict[str, Any]:
-        """استخراج كلمات مفتاحية"""
-        if not self.ai_route:
-            return {"tags": []}
+        from app.privacy.cloud_ai_consent import get_granted_providers
+        if "gemini" not in get_granted_providers(user_id, "image_analysis"):
+            return {"status": "consent_required", "purpose": "image_analysis"}
+
+        from app.infrastructure.ai.ai_gateway import ai_gateway
+        prompt = (
+            "Analyze the supplied image. Return only one JSON object with string fields "
+            "description, extracted_text; and arrays of strings tags, objects. "
+            f"Use language {language}. Do not infer sensitive identity attributes."
+        )
+        result = await ai_gateway.see(prompt, image_base64, mime_type=mime_type, user_id=user_id)
+        if not result:
+            return {"status": "provider_error", "message": "تعذّر الوصول إلى مزود تحليل الصور."}
         try:
-            prompt = f"Extract 10-15 relevant tags/keywords from this image. Reply as comma-separated list. Language: {language}."
-            text, _ = await self.ai_route(prompt, task="vision")
-            tags = [t.strip() for t in (text or "").split(",") if t.strip()]
-            return {"tags": tags}
-        except:
-            return {"tags": []}
-
-    async def ocr(self, image_base64: str, language: str = "ar") -> Dict[str, Any]:
-        """استخراج النص من الصورة"""
-        if not self.ai_route:
-            return {"text": ""}
-        try:
-            prompt = f"Extract all visible text from this image. Language: {language}."
-            text, _ = await self.ai_route(prompt, task="vision")
-            return {"text": text or ""}
-        except:
-            return {"text": ""}
-
-    async def detect_objects(self, image_base64: str) -> Dict[str, Any]:
-        """اكتشاف العناصر في الصورة"""
-        if not self.ai_route:
-            return {"objects": []}
-        try:
-            prompt = "List all objects, people, and elements visible in this image. Reply as comma-separated list."
-            text, _ = await self.ai_route(prompt, task="vision")
-            objects = [o.strip() for o in (text or "").split(",") if o.strip()]
-            return {"objects": objects}
-        except:
-            return {"objects": []}
-
-    async def full_analysis(self, image_base64: str, language: str = "ar") -> Dict[str, Any]:
-        """تحليل كامل للصورة"""
-        description = await self.describe(image_base64, language)
-        tags = await self.extract_tags(image_base64, language)
-        text = await self.ocr(image_base64, language)
-        objects = await self.detect_objects(image_base64)
+            candidate = re.sub(r"^```(?:json)?\s*|\s*```$", "", result.strip(), flags=re.IGNORECASE)
+            parsed = json.loads(candidate)
+            if not isinstance(parsed, dict):
+                raise ValueError("expected object")
+            description = str(parsed.get("description", ""))[:4000]
+            extracted_text = str(parsed.get("extracted_text", ""))[:4000]
+            tags = [str(item)[:100] for item in parsed.get("tags", []) if isinstance(item, str)][:20]
+            objects = [str(item)[:100] for item in parsed.get("objects", []) if isinstance(item, str)][:40]
+        except Exception:
+            # Do not turn malformed provider output into a fabricated structured result.
+            return {"status": "provider_error", "message": "تعذّر تفسير نتيجة تحليل الصورة."}
         return {
-            "description": description.get("description", ""),
-            "tags": tags.get("tags", []),
-            "extracted_text": text.get("text", ""),
-            "objects": objects.get("objects", []),
+            "status": "success",
+            "provider": "gemini",
+            "description": description,
+            "tags": tags,
+            "extracted_text": extracted_text,
+            "objects": objects,
         }
 
 

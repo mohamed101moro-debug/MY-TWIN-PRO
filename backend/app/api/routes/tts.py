@@ -8,9 +8,11 @@ import base64
 import tempfile
 import os
 import asyncio
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Optional, Dict
+from app.api.dependencies.auth import get_current_user_id
+from app.privacy.cloud_ai_consent import get_granted_providers
 
 logger = logging.getLogger("tts_route")
 router = APIRouter(prefix="/api/tts-legacy", tags=["tts"])
@@ -93,10 +95,13 @@ def estimate_duration(text: str, language: str) -> float:
 # ============================================================
 
 @router.post("", response_model=TTSResponse)
-async def generate_tts(request: TTSRequest):
+async def generate_tts(request: TTSRequest, user_id: str = Depends(get_current_user_id)):
     """
     توليد ملف صوتي باستخدام Edge TTS وإرجاعه كـ base64.
     """
+    if "edge_tts" not in get_granted_providers(user_id, "voice_synthesis"):
+        raise HTTPException(status_code=403, detail="يلزم اختيار موافقة Edge TTS قبل إرسال النص لمزود الصوت.")
+
     try:
         import edge_tts
     except ImportError:

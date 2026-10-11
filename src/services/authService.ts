@@ -3,6 +3,7 @@
 import { apiPost, apiGet } from '../../lib/httpClient';
 import { googleLogin, saveAuthData, logout as clearAuthSession } from '../../lib/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAccessToken } from '../../lib/credentialStore';
 
 const KEYS = { USER: 'mytwin-user', LAST_SESSION: 'mytwin-last-session' };
 
@@ -80,7 +81,7 @@ export class AuthService {
   }
 
   async getToken(): Promise<string | null> {
-    try { return await AsyncStorage.getItem('mytwin-token'); } catch { return null; }
+    return getAccessToken();
   }
 
   async checkSessionRestore(): Promise<SessionRestoreResult> {

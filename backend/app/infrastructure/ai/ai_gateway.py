@@ -71,15 +71,29 @@ class AIGateway:
     def _cache_key(user_id, prompt):
         return f"{user_id or 'anon'}:{hashlib.md5(prompt[:200].encode()).hexdigest()}"
     async def route(self, prompt, task="general", user_id=None, tier="free", language="unspecified") -> Tuple[str,str]:
+        purpose = "image_generation" if task == "image" else "text_generation"
+        routing = list(TASK_ROUTING.get(task, TASK_ROUTING["general"]))
+        try:
+            from app.privacy.cloud_ai_consent import get_granted_providers
+            granted_providers = get_granted_providers(user_id, purpose)
+        except Exception:
+            granted_providers = set()
+        routing = [entry for entry in routing if entry["provider"] in granted_providers]
+        # No identity, storage failure, revoked/stale consent, or unknown provider all
+        # produce a local-only response; the prompt never falls through to a vendor.
+        if not routing:
+            from app.infrastructure.ai.local_fallback import local_respond
+            logger.info("Cloud AI blocked for task=%s: no effective provider consent", task)
+            return local_respond(task), "local"
         cacheable = bool(user_id) and task not in ("emotional",)
-        cache_scope = f"{user_id}|{task}|{tier}|{language}" if cacheable else None
+        provider_scope = ",".join(sorted({entry["provider"] for entry in routing}))
+        cache_scope = f"{user_id}|{task}|{tier}|{language}|providers={provider_scope}" if cacheable else None
         try:
             from app.infrastructure.cache.cache_service import get_ai_response
             if cacheable:
                 hit = get_ai_response(prompt, scope=cache_scope)
                 if hit: return hit, "cache"
         except Exception: pass
-        routing = list(TASK_ROUTING.get(task, TASK_ROUTING["general"]))
         if tier in ("free","plus"):
             routing.sort(key=lambda e: 0 if e["provider"] in LEAN_FIRST else 1)
         for entry in routing:
@@ -115,8 +129,14 @@ class AIGateway:
             return text
         except Exception:
             return None
-    async def see(self, prompt: str, image_base64: str, mime_type: str = "image/jpeg") -> Optional[str]:
+    async def see(self, prompt: str, image_base64: str, mime_type: str = "image/jpeg", user_id: str | None = None) -> Optional[str]:
         """رؤية مشتركة: فهم صورة عبر Gemini Vision (REST)."""
+        try:
+            from app.privacy.cloud_ai_consent import get_granted_providers
+            if "gemini" not in get_granted_providers(user_id, "image_analysis"):
+                return None
+        except Exception:
+            return None
         key = self.key_manager.get_key("gemini")
         if not key: return None
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}"

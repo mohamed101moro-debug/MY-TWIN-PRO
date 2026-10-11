@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearCredentialStorage } from './credentialStore';
 import * as Speech from 'expo-speech';
 import { useAwarenessStore } from '../store/useAwarenessStore';
 import { useCapabilityStore } from '../store/useCapabilityStore';
@@ -18,7 +19,7 @@ import { clearOfflineSessionData } from './offlineService';
 import { cancelPendingRequests } from './httpClient';
 import { bootstrapCoordinator } from '../src/core/BootstrapCoordinator';
 
-const AUTH_KEYS = ['mytwin-token', 'mytwin-user'];
+const AUTH_KEYS = ['mytwin-user'];
 const SESSION_KEYS = [
   'mytwin-core-v2',
   'mytwin-relationship-v2',
@@ -39,9 +40,14 @@ export async function clearLocalSessionState(): Promise<void> {
   try { previousUserId = await AsyncStorage.getItem('mytwin-user'); } catch {}
   let credentialRemovalError: unknown;
   try {
-    await AsyncStorage.multiRemove(AUTH_KEYS);
+    await clearCredentialStorage();
   } catch (error) {
     credentialRemovalError = error;
+  }
+  try {
+    await AsyncStorage.multiRemove(AUTH_KEYS);
+  } catch (error) {
+    credentialRemovalError = credentialRemovalError || error;
   }
 
   // Invalidate active fetches before any of their results can mutate the next session.

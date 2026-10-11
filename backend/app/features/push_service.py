@@ -3,6 +3,8 @@ import logging
 logger = logging.getLogger("push_service")
 async def send_push(user_id: str, title: str, body: str) -> bool:
     try:
+        from app.infrastructure.push.preferences import proactive_notifications_enabled
+        if not proactive_notifications_enabled(user_id): return False
         import aiohttp
         from app.infrastructure.database.supabase_client import get_db
         r = get_db().table("user_devices").select("push_token").eq("user_id", user_id).limit(5).execute()

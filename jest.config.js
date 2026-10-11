@@ -16,6 +16,7 @@ module.exports = {
     '\\.(png|jpg|jpeg|gif|svg|webp|ico)$': '<rootDir>/__mocks__/fileMock.js',
     // مكافحة المكتبات
     '^expo-av$': '<rootDir>/__mocks__/expo-av.js',
+    '^expo-secure-store$': '<rootDir>/__mocks__/expo-secure-store.js',
     '^expo-linear-gradient$': '<rootDir>/__mocks__/expo-linear-gradient.js',
     '^lucide-react-native$': '<rootDir>/__mocks__/lucide-react-native.js',
     '^react-native$': '<rootDir>/__mocks__/react-native.js',
