@@ -15,8 +15,17 @@ class ImageEditor:
     def __init__(self):
         self.ai_route = None
 
-    async def upscale(self, image_base64: str) -> Dict[str, Any]:
+    def _has_consent(self, user_id: Optional[str], provider: str) -> bool:
+        try:
+            from app.privacy.cloud_ai_consent import get_granted_providers
+            return provider in get_granted_providers(user_id, "image_editing")
+        except Exception:
+            return False
+
+    async def upscale(self, image_base64: str, user_id: Optional[str] = None) -> Dict[str, Any]:
         """تكبير الصورة باستخدام AI"""
+        if not self._has_consent(user_id, "huggingface"):
+            return {"status": "consent_required", "purpose": "image_editing"}
         if not HF_KEY:
             return {"status": "no_key", "message": "HuggingFace API key required"}
         try:
@@ -34,8 +43,11 @@ class ImageEditor:
             logger.warning(f"Upscale failed: {e}")
         return {"status": "failed", "message": "Upscale unavailable"}
 
-    async def remove_background(self, image_base64: str) -> Dict[str, Any]:
+    async def remove_background(self, image_base64: str, user_id: Optional[str] = None) -> Dict[str, Any]:
         """إزالة الخلفية"""
+        target_provider = "huggingface" if HF_KEY else "pollinations"
+        if not self._has_consent(user_id, target_provider):
+            return {"status": "consent_required", "purpose": "image_editing"}
         if not HF_KEY:
             # محاولة عبر Pollinations
             try:
@@ -63,8 +75,10 @@ class ImageEditor:
         except: pass
         return {"status": "failed"}
 
-    async def restore_face(self, image_base64: str) -> Dict[str, Any]:
+    async def restore_face(self, image_base64: str, user_id: Optional[str] = None) -> Dict[str, Any]:
         """تحسين الوجه باستخدام AI"""
+        if not self._has_consent(user_id, "huggingface"):
+            return {"status": "consent_required", "purpose": "image_editing"}
         if not HF_KEY:
             return {"status": "no_key"}
         try:
@@ -81,8 +95,10 @@ class ImageEditor:
         except: pass
         return {"status": "failed"}
 
-    async def inpaint(self, image_base64: str, mask_base64: str, prompt: str) -> Dict[str, Any]:
+    async def inpaint(self, image_base64: str, mask_base64: str, prompt: str, user_id: Optional[str] = None) -> Dict[str, Any]:
         """تعديل جزء من الصورة (Inpainting)"""
+        if not self._has_consent(user_id, "huggingface"):
+            return {"status": "consent_required", "purpose": "image_editing"}
         if not HF_KEY:
             return {"status": "no_key"}
         try:

@@ -23,6 +23,8 @@ _ACCOUNT_TABLE_ROWS = [
     ("twin_internal_states", "twin_internal_state", "updated_at"),
     ("twin_entity_identity", "entity_identity", "created_at"),
     ("lifecycle_intention_receipts", "lifecycle_receipts", "accepted_at"),
+    # The current user choice is private account data and must follow export/deletion.
+    ("privacy_consents", "privacy_consents", "id"),
     # These tables are already part of the deletion inventory, but are not yet
     # safe to export until their deployed schema and deterministic order column
     # are verified against the live migration/catalog inventory.
@@ -71,4 +73,3 @@ EXPORT_MAX_RECORDS = 50_000
 # Deliberately false until a staging catalog report confirms every table, owner column,
 # export ordering column, primary key, and deterministic PK tie-breaker in the query.
 EXPORT_SCHEMA_VERIFICATION_PASSED = False
-

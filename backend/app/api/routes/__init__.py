@@ -12,13 +12,13 @@ logger = logging.getLogger("routes")
 api_router = APIRouter()
 
 # Core release routers. Keep explicit imports for predictable startup order.
-from app.api.routes import auth, chat, memories, profile
+from app.api.routes import auth, chat, memories, profile, privacy_routes
 from app.api.routes import study_routes, code_lab_routes, business_routes, creator_routes, dream_routes, life_coach_routes
 from app.api.routes import image_lab_routes, smart_home_routes, task_manager_routes, economy_routes, billing_routes, referral
 from app.api.routes import push, system_routes
 
 _CORE = [
-    auth, chat, memories, profile, study_routes, code_lab_routes, business_routes, creator_routes, dream_routes,
+    auth, chat, memories, profile, privacy_routes, study_routes, code_lab_routes, business_routes, creator_routes, dream_routes,
     life_coach_routes, image_lab_routes, smart_home_routes, task_manager_routes, economy_routes, billing_routes,
     referral, push, system_routes,
 ]

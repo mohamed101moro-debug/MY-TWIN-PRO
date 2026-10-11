@@ -57,6 +57,10 @@ class ImageOrchestrator:
                        lighting: str = "", camera: str = "", negative: str = "",
                        language: str = "ar") -> Dict[str, Any]:
         """التوليد الذكي مع كامل المراحل"""
+        from app.privacy.cloud_ai_consent import get_granted_providers
+        approved = get_granted_providers(user_id, "image_generation")
+        if not approved:
+            return {"status": "consent_required", "purpose": "image_generation"}
 
         # 1. فحص السلامة
         safety_check = await self.safety.check_prompt(prompt, language)
@@ -71,6 +75,13 @@ class ImageOrchestrator:
 
         # 4. اختيار أفضل مزود
         providers = await self.router.route(user_id, style, intent_profile.get("style", "realistic"))
+        providers = [
+            provider for provider in providers
+            if (provider == "gemini" and "gemini_image" in approved)
+            or (provider in {"flux", "ideogram", "pollinations"} and "pollinations" in approved)
+        ]
+        if not providers:
+            return {"status": "consent_required", "purpose": "image_generation"}
 
         # 5. محاولة التوليد عبر المزودين
         result = None
@@ -123,6 +134,12 @@ class ImageOrchestrator:
     async def _try_provider(self, user_id: str, prompt: str, negative: str, provider: str) -> Optional[Dict]:
         """محاولة التوليد عبر مزود محدد"""
         import base64, aiohttp, os, asyncio
+        from app.privacy.cloud_ai_consent import get_granted_providers
+        consent_provider = "gemini_image" if provider == "gemini" else (
+            "pollinations" if provider in {"flux", "ideogram", "pollinations"} else None
+        )
+        if not consent_provider or consent_provider not in get_granted_providers(user_id, "image_generation"):
+            return None
 
         if provider == "gemini":
             try:
@@ -165,16 +182,17 @@ class ImageOrchestrator:
         enhanced = await self.composer.enhance_with_ai(prompt)
         return {"original": prompt, "enhanced": enhanced}
 
-    async def analyze_image(self, image_base64: str, language: str = "ar") -> Dict[str, Any]:
-        return await self.analyzer.full_analysis(image_base64, language)
+    async def analyze_image(self, image_base64: str, language: str = "ar", user_id: str | None = None,
+                            mime_type: str = "image/jpeg") -> Dict[str, Any]:
+        return await self.analyzer.full_analysis(image_base64, language, user_id=user_id, mime_type=mime_type)
 
-    async def edit_image(self, operation: str, image_base64: str, **kwargs) -> Dict[str, Any]:
+    async def edit_image(self, operation: str, image_base64: str, user_id: str | None = None, **kwargs) -> Dict[str, Any]:
         if operation == "upscale":
-            return await self.editor.upscale(image_base64)
+            return await self.editor.upscale(image_base64, user_id=user_id)
         elif operation == "remove_bg":
-            return await self.editor.remove_background(image_base64)
+            return await self.editor.remove_background(image_base64, user_id=user_id)
         elif operation == "restore_face":
-            return await self.editor.restore_face(image_base64)
+            return await self.editor.restore_face(image_base64, user_id=user_id)
         return {"status": "unknown_operation"}
 
     async def get_dashboard(self, user_id: str, lang: str = "ar") -> Dict[str, Any]:
