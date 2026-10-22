@@ -15,8 +15,8 @@
 - النطاق الذي زوّد به المالك: `https://my-twin-pro-production-fd77.up.railway.app/`.
 - أفاد المالك في 21 أكتوبر أن Railway غير مربوط حالياً بالمستودع. لا يوجد في جلسة التنفيذ Railway connector أو CLI موثوق لتأكيد الفرع المتصل أو إعداد Root Directory أو بدء deployment؛ لذلك لا يوجد إثبات أن أي commit حديث وصل إلى الخدمة.
 - استجابة `/health` الناجحة التي سُجلت سابقاً هي liveness فقط. لا تُثبت أن Supabase أو أعمدة المصادقة أو RLS أو worker جاهزة.
-- يضيف فرع المراجعة الجاري `/ready` لفحص اتصال قاعدة البيانات وعقد `profiles.id,status,deleted_at` دون قراءة صفوف؛ لم يُنشر المسار ولم ينجح CI الخاص بهذا التغيير بعد.
-- على فرع المراجعة الجاري تحديث `app.json` وfallback الهاتف إلى النطاق الجديد. لن يحدث deploy تلقائي بسبب الفصل الذي أكده المالك.
+- يضيف فرع المراجعة `/ready` لفحص اتصال قاعدة البيانات وعقد `profiles.id,status,deleted_at` دون قراءة صفوف؛ نجح backend CI لهذا التغيير على GitHub، لكن المسار لم يُنشر على Railway.
+- تحديث `app.json` وfallback الهاتف إلى النطاق الذي زوّده المالك موجود في PR #4. لا يوجد deploy مثبت بسبب عدم ربط Railway بالمستودع.
 - إعدادات `railway.json` في جذر المستودع و`backend/railway.json` تخدم سياقي build مختلفين؛ يجب اختيار ملف الإعداد ومسار الجذر بناءً على إعداد الخدمة الفعلي قبل ربطها، ولا يمكن استنتاج ذلك من الملفات وحدها.
 
 ## Supabase الإنتاج
@@ -31,8 +31,8 @@
 
 - إعداد العميل على الفرع يستخدم Expo SDK 52 / React Native 0.76.9. لم تُنفذ ترقية SDK مدروسة أو بناء native APK/AAB على EAS أو قبول Android/iOS فعلي.
 - UUID EAS المعتمد من المالك هو `49db469b-9aca-4ffc-8b34-88b140528840`، وموجود في `extra.eas.projectId` و`updates.url`؛ ذلك لا يثبت اكتمال credentials أو build أو النشر.
-- GitHub Actions على PR #4: backend ناجح في تشغيلين حديثين، وfrontend يفشل عند `npm audit --omit=dev --audit-level=high`. السجل يعرض 62 finding (1 critical, 37 high, 24 moderate). اقتراح `npm audit fix --force` يقفز إلى `expo@44.0.6` وهو تغيير كاسر؛ لم يُستخدم.
-- نتائج backend المحلية السابقة: 229 passed و9 skipped على بيئة Python 3.12.3. CI المثبت على Python 3.11.17 هو مرجع القبول؛ كما أن CI الحالي على GitHub يمر للـbackend.
+- GitHub Actions بعد إعادة الكتابة على PR #4: backend push وpull-request ناجحان؛ frontend يفشل عند `Production dependency audit` / `npm audit --omit=dev --audit-level=high`. إعادة الفحص سجلت 62 finding (1 critical, 37 high, 24 moderate). لم يُستخدم `npm audit fix --force` لأنه قد يسبب تغييراً كسرياً.
+- نتائج backend المحلية السابقة: 229 passed و9 skipped على Python 3.12.3؛ وهي نتائج تاريخية. CI المثبت على Python 3.11.17 هو مرجع القبول، وآخر backend CI على GitHub نجح.
 
 ## حالة خارطة الطريق
 
