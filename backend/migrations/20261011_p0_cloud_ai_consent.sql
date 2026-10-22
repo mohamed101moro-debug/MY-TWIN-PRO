@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS public.privacy_consents (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   purpose text NOT NULL CHECK (purpose IN ('text_generation', 'image_generation', 'image_analysis', 'image_editing', 'voice_synthesis', 'audio_transcription', 'memory_embedding')),
-  provider text NOT NULL CHECK (provider IN ('gemini', 'gemini_image', 'groq', 'openrouter', 'huggingface', 'pollinations', 'elevenlabs', 'edge_tts', 'gemini_embedding', 'openai_embedding')),
+  provider text NOT NULL CHECK (provider IN ('gemini', 'gemini_image', 'groq', 'openrouter', 'huggingface', 'pollinations', 'elevenlabs', 'edge_tts', 'gemini_embedding')),
   granted boolean NOT NULL,
   policy_version text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS public.privacy_consents (
     (purpose = 'image_editing' AND provider IN ('huggingface', 'pollinations')) OR
     (purpose = 'voice_synthesis' AND provider IN ('elevenlabs', 'edge_tts')) OR
     (purpose = 'audio_transcription' AND provider IN ('groq', 'gemini')) OR
-    (purpose = 'memory_embedding' AND provider IN ('gemini_embedding', 'openai_embedding'))
+    (purpose = 'memory_embedding' AND provider = 'gemini_embedding')
   ),
   CONSTRAINT privacy_consents_user_purpose_provider_key UNIQUE (user_id, purpose, provider)
 );

@@ -1,7 +1,21 @@
 #!/bin/bash
-API="https://my-twin-pro-production.up.railway.app"
-EMAIL="${MYTWIN_TEST_EMAIL:?Set a dedicated test email in the environment.}"
-PASSWORD="$PASSWORD"
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/test_target_guard.sh"
+if [[ "${MYTWIN_TEST_ENV:-}" != "staging" ]]; then
+  echo "This email-based test is restricted to an explicitly configured staging environment." >&2
+  exit 2
+fi
+: "${MYTWIN_TEST_EMAIL:?Set a dedicated staging-only test email in the environment.}"
+: "${MYTWIN_TEST_PASSWORD:?Set a staging-only test password in the environment.}"
+if [[ ! "$MYTWIN_TEST_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
+  echo "MYTWIN_TEST_EMAIL must be a valid staging test email address." >&2
+  exit 2
+fi
+if [[ ! "$MYTWIN_TEST_PASSWORD" =~ ^[A-Za-z0-9_-]{12,128}$ ]]; then
+  echo "MYTWIN_TEST_PASSWORD must be 12-128 alphanumeric, underscore, or hyphen characters." >&2
+  exit 2
+fi
+EMAIL="$MYTWIN_TEST_EMAIL"
+PASSWORD="$MYTWIN_TEST_PASSWORD"
 
 echo "══════════════════════════════════════════"
 echo "🧪 اختبار باستخدام بريد إلكتروني حقيقي"
@@ -13,7 +27,7 @@ echo "1. محاولة إنشاء الحساب..."
 SIGNUP=$(curl -s -X POST $API/api/auth/signup \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\",\"twin_name\":\"RealTwin\",\"lang\":\"ar\"}")
-echo "$SIGNUP" | python3 -m json.tool 2>/dev/null || echo "$SIGNUP"
+echo "Signup response received; response body suppressed to protect credentials and tokens."
 TOKEN=$(echo $SIGNUP | python3 -c "import sys,json; print(json.load(sys.stdin).get('token',''))" 2>/dev/null)
 USER_ID=$(echo $SIGNUP | python3 -c "import sys,json; print(json.load(sys.stdin).get('user_id',''))" 2>/dev/null)
 
@@ -29,7 +43,7 @@ echo "2. محاولة تسجيل الدخول..."
 LOGIN=$(curl -s -X POST $API/api/auth/login \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
-echo "$LOGIN" | python3 -m json.tool 2>/dev/null || echo "$LOGIN"
+echo "Login response received; response body suppressed to protect credentials and tokens."
 TOKEN=$(echo $LOGIN | python3 -c "import sys,json; print(json.load(sys.stdin).get('token',''))" 2>/dev/null)
 USER_ID=$(echo $LOGIN | python3 -c "import sys,json; print(json.load(sys.stdin).get('user_id',''))" 2>/dev/null)
 

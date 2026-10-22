@@ -70,7 +70,7 @@
       "eas": {
         "projectId": "49db469b-9aca-4ffc-8b34-88b140528840"
       },
-      "API_URL": "my-twin-pro-production.up.railway.app",
+      "API_URL": "https://my-twin-pro-production-fd77.up.railway.app",
       "ENVIRONMENT": "production"
     },
     "updates": {

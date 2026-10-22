@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/privacy", tags=["privacy"])
 
 class CloudAIConsentRequest(BaseModel):
     purpose: Literal["text_generation", "image_generation", "image_analysis", "image_editing", "voice_synthesis", "audio_transcription", "memory_embedding"]
-    provider: Literal["gemini", "gemini_image", "groq", "openrouter", "huggingface", "pollinations", "elevenlabs", "edge_tts", "gemini_embedding", "openai_embedding"]
+    provider: Literal["gemini", "gemini_image", "groq", "openrouter", "huggingface", "pollinations", "elevenlabs", "edge_tts", "gemini_embedding"]
     granted: bool
     policy_version: str
 

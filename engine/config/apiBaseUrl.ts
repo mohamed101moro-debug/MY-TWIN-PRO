@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = 'https://my-twin-pro-production.up.railway.app';
+const DEFAULT_API_BASE_URL = 'https://my-twin-pro-production-fd77.up.railway.app';
 
 /**
  * Resolve the backend URL in a deterministic order:

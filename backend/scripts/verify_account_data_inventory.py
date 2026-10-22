@@ -56,6 +56,7 @@ def evaluate_access_contract(
         "update": "UPDATE",
         "delete": "DELETE",
     }
+    non_row_privileges = ("truncate", "trigger", "references")
     access_report: dict[str, dict] = {}
     for table_name in requested_tables:
         if table_name not in tables:
@@ -63,7 +64,10 @@ def evaluate_access_contract(
         table_access = {"policies": policy_by_table.get(table_name, []), "roles": {}}
         for role_name in ("anon", "authenticated"):
             privilege = privilege_by_table_role.get((table_name, role_name), {})
-            role_access = {action: bool(privilege.get(action, False)) for action in commands}
+            role_access = {
+                action: bool(privilege.get(action, False))
+                for action in (*commands, *non_row_privileges)
+            }
             applicable = [
                 policy for policy in policy_by_table.get(table_name, [])
                 if _policy_applies(policy.get("roles") or [], role_name)
@@ -76,6 +80,15 @@ def evaluate_access_contract(
                     "table": table_name,
                     "issue": "anonymous_role_has_table_privileges",
                     "privileges": [action.upper() for action in commands if role_access[action]],
+                })
+            elevated = [action.upper() for action in non_row_privileges if role_access[action]]
+            if elevated:
+                issues.append({
+                    "table": table_name,
+                    "issue": "role_has_non_row_level_privileges",
+                    "role": role_name,
+                    "privileges": elevated,
+                    "review_note": "RLS policies do not constrain TRUNCATE; review each grant under least privilege.",
                 })
             if role_name == "authenticated":
                 for action, command in commands.items():
@@ -154,7 +167,10 @@ async def inspect_inventory(dsn: str) -> dict:
                    has_table_privilege(r.rolname, format('public.%I', t.table_name), 'SELECT') AS select,
                    has_table_privilege(r.rolname, format('public.%I', t.table_name), 'INSERT') AS insert,
                    has_table_privilege(r.rolname, format('public.%I', t.table_name), 'UPDATE') AS update,
-                   has_table_privilege(r.rolname, format('public.%I', t.table_name), 'DELETE') AS delete
+                   has_table_privilege(r.rolname, format('public.%I', t.table_name), 'DELETE') AS delete,
+                   has_table_privilege(r.rolname, format('public.%I', t.table_name), 'TRUNCATE') AS truncate,
+                   has_table_privilege(r.rolname, format('public.%I', t.table_name), 'TRIGGER') AS trigger,
+                   has_table_privilege(r.rolname, format('public.%I', t.table_name), 'REFERENCES') AS references
               FROM unnest($1::text[]) AS t(table_name)
               CROSS JOIN pg_roles r
              WHERE r.rolname IN ('anon', 'authenticated')

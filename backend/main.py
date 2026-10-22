@@ -120,24 +120,34 @@ if "admin" in _INTERNAL_ROUTERS:
         await verify_admin(x_admin_key)
         from app.core.soul_core import soul_kernel
         return JSONResponse(content=soul_kernel.status())
-if __name__ == "__main__":
-    import uvicorn; uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
-
-
-# ── جذر صحي: يخدم مسارات الصحة حتى تمر فحوص Railway بلا تعديل إعدادات ──
-@app.get("/health", include_in_schema=False)
-async def __root_health__():
-    return {"ok": True, "status": "healthy", "service": "my-twin-pro"}
-
-
+# Railway's /health route is process liveness only; database readiness is separate.
 @app.get("/api/health", include_in_schema=False)
 async def __api_health__():
     return {"ok": True, "status": "healthy", "service": "my-twin-pro"}
 
 
-@app.get("/", include_in_schema=False)
-async def __root_index__():
-    return {"ok": True, "service": "my-twin-pro", "health": "/health", "status": "/api/system/status"}
+@app.get("/ready", include_in_schema=False)
+async def readiness():
+    """Check required database/profile schema without reading account rows."""
+    try:
+        from app.infrastructure.database.supabase_client import get_db
+
+        get_db().table("profiles").select("id,status,deleted_at").limit(0).execute()
+    except Exception as exc:
+        logger.warning("Readiness unavailable (%s)", type(exc).__name__)
+        return JSONResponse(
+            status_code=503,
+            content={
+                "ok": False,
+                "status": "not_ready",
+                "checks": {"database": "unavailable", "profile_auth_schema": "unavailable"},
+            },
+        )
+    return {
+        "ok": True,
+        "status": "ready",
+        "checks": {"database": "ready", "profile_auth_schema": "ready"},
+    }
 
 
 # ── طبقة ضمان التفسير الإدراكي على حدود HTTP ──
@@ -188,3 +198,8 @@ async def semantic_interpretation_middleware(request, call_next):
     except Exception:
         pass
     return response
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)))

@@ -1,33 +1,55 @@
-# Known Limitations — P0.05 Repository Baseline
+# القيود والموانع الحالية — My Twin
 
-Last updated: 2026-10-10. This records what has not been proven; it does not infer the user's production configuration from local access.
+**آخر تحديث:** 22 أكتوبر 2026. هذا سجل للحالة الحالية، وليس اعتماداً للإطلاق. وثيقة `BASELINE.md` تبقى سجلاً تاريخياً ليوم 10 أكتوبر ولا تُعدّل رجوعياً.
 
-## Platform access and deployment
+## GitHub والمصدر
 
-No Railway connector or CLI is available in this execution session, so service settings, watched branch, root directory, environment variables, and automatic deployment policy remain uninspected. The user-provided failed-build logs show Railpack analyzed an archive whose top-level contents were only `MY_TWIN_PRO/`, then failed to detect an app. The current P0.05 branch places source markers at repository root, explicitly selects a root-context Dockerfile, and checks the Docker context in CI. No Railway deployment was made; the fix is not yet proven against the live service.
+- رؤوس `main` وPR #1–#4 أُعيدت كتابتها في 22 أكتوبر لإزالة اعتماد ثابت وبيانات دخول افتراضية من التاريخ المعروف؛ لذلك تغيّرت معرّفات commits.
+- أكّد المالك تدوير اعتماد الاختبار قبل إعادة الكتابة. لأن المستودع عام، قد تبقى نسخ في forks أو caches داخلية لدى GitHub؛ force-push لا يضمن محوها، ويلزم طلب GitHub Support لإزالة البيانات الحساسة إذا بقيت قابلة للوصول.
+- PRs #1–#4 ما زالت مفتوحة كمسودات متراكمة؛ لم يُدمج أي منها إلى `main`. لذلك لا يصح القول إن `main` استُبدل بحزمة P0.05؛ الحزمة موجودة في فرع الدمج/المراجعة.
+- PR #1 هو baseline P0.05، PR #2 إعدادات البناء، PR #3 الجلسات/الموافقات، وPR #4 hardening لمدقق الصلاحيات. كلها تحتاج مراجعة وCI أخضر قبل الدمج.
+- يحتوي الفرع `BASELINE.md` و`SOURCE_MANIFEST.json` و`KNOWN_LIMITATIONS.md`، ويذكر baseline استيراد 883 ملفاً من حزمة P0-05. هذا لا يلغي بوابات القبول اللاحقة أو يثبت أن جميع ملفات `main` تبدلت.
 
-The root Railway Docker build was not executed locally because Docker is unavailable in this sandbox. CI now performs a real image build. If the Railway service Root Directory is configured to `/backend`, use `/backend/railway.json` as the config path; otherwise use the repository root and `/railway.json`. The dashboard's current setting is unknown. Railway's official docs currently mark Config as Code deprecated and state existing files keep working until 2026-12-01; migrate to Infrastructure as Code before that date.
+## Railway وAPI
 
-The Supabase connector listed the only project named `My Twin` (`nckgqvpocawknhkruhip`) as `INACTIVE`; reading its migration ledger timed out. The project was not restored or awakened, no branch was created, and no SQL or migration was applied. Confirm the intended staging project and availability before database-dependent roadmap work.
+- النطاق الذي زوّد به المالك: `https://my-twin-pro-production-fd77.up.railway.app/`.
+- أفاد المالك في 21 أكتوبر أن Railway غير مربوط حالياً بالمستودع. لا يوجد في جلسة التنفيذ Railway connector أو CLI موثوق لتأكيد الفرع المتصل أو إعداد Root Directory أو بدء deployment؛ لذلك لا يوجد إثبات أن أي commit حديث وصل إلى الخدمة.
+- استجابة `/health` الناجحة التي سُجلت سابقاً هي liveness فقط. لا تُثبت أن Supabase أو أعمدة المصادقة أو RLS أو worker جاهزة.
+- يضيف فرع المراجعة `/ready` لفحص اتصال قاعدة البيانات وعقد `profiles.id,status,deleted_at` دون قراءة صفوف؛ نجح backend CI لهذا التغيير على GitHub، لكن المسار لم يُنشر على Railway.
+- تحديث `app.json` وfallback الهاتف إلى النطاق الذي زوّده المالك موجود في PR #4. لا يوجد deploy مثبت بسبب عدم ربط Railway بالمستودع.
+- إعدادات `railway.json` في جذر المستودع و`backend/railway.json` تخدم سياقي build مختلفين؛ يجب اختيار ملف الإعداد ومسار الجذر بناءً على إعداد الخدمة الفعلي قبل ربطها، ولا يمكن استنتاج ذلك من الملفات وحدها.
 
-## Build identity and client configuration
+## Supabase الإنتاج
 
-`app.json` contains different `extra.eas.projectId` and `updates.url` identifiers. The user was asked which UUID is canonical; the answer is pending. No EAS build, OTA update, signed Android artifact, or device acceptance has run.
+- أكد المالك أن المشروع `nckgqvpocawknhkruhip` هو production. الفحوص السابقة كانت metadata/كتالوج فقط: لم تُقرأ صفوف مستخدمين ولم تطبق DDL أو تعديلات سياسات.
+- فحص metadata الموثق في جلسة 21 أكتوبر أظهر غياب أعمدة `profiles.status`, `deleted_at`, `deletion_started_at` المطلوبة من مسارات الحساب/المصادقة والحذف؛ لذلك قد تفشل المسارات الموثقة حتى لو كان `/health` ناجحاً.
+- RLS معطل على `twin_internal_states`, `twin_events`, `identity_versions`; رُصدت grants واسعة لـ`anon` و`authenticated` تشمل CRUD وامتيازات لا تضبطها RLS؛ وهناك سياسات `profiles` مكررة وملاحظات Advisor. هذه نتائج metadata سابقة للقراءة فقط وتحتاج إعادة تحقق على staging قبل كتابة أي migration.
+- جدول `privacy_consents` غير موجود في metadata وقت الفحص؛ migration الموافقات لم تُثبت على قاعدة الإنتاج. لا تُطبق migrations أو SQL على الإنتاج من الفرع أو المحادثة مباشرة.
+- لا توجد بيئة staging مثبتة لهذا الفحص، ولا نسخة احتياطية/اختبار استعادة معتمد. جميع اختبارات A/B أو worker التي تتطلب قاعدة حية تبقى `NOT RUN`.
 
-Local Android JavaScript export passes under Node 20.20.2 after explicitly adding `query-string@9.5.1`, and `expo install --check` reports aligned dependencies. This is not a native Gradle/AAB build or a store-ready artifact.
+## البناء والاعتماديات
 
-The client uses `EXPO_PUBLIC_API_BASE_URL` at EAS bundle time, then falls back to `https://my-twin-pro-production.up.railway.app`. The `app.json` `extra.API_URL` value is unused by current code and has no URL scheme. Railway runtime variables are not implicitly passed into EAS; the current fallback mitigates this only while that host remains correct.
+- إعداد العميل على الفرع يستخدم Expo SDK 52 / React Native 0.76.9. لم تُنفذ ترقية SDK مدروسة أو بناء native APK/AAB على EAS أو قبول Android/iOS فعلي.
+- UUID EAS المعتمد من المالك هو `49db469b-9aca-4ffc-8b34-88b140528840`، وموجود في `extra.eas.projectId` و`updates.url`؛ ذلك لا يثبت اكتمال credentials أو build أو النشر.
+- GitHub Actions بعد إعادة الكتابة على PR #4: backend push وpull-request ناجحان؛ frontend يفشل عند `Production dependency audit` / `npm audit --omit=dev --audit-level=high`. إعادة الفحص سجلت 62 finding (1 critical, 37 high, 24 moderate). لم يُستخدم `npm audit fix --force` لأنه قد يسبب تغييراً كسرياً.
+- نتائج backend المحلية السابقة: 229 passed و9 skipped على Python 3.12.3؛ وهي نتائج تاريخية. CI المثبت على Python 3.11.17 هو مرجع القبول، وآخر backend CI على GitHub نجح.
 
-## Dependency and test gates
+## حالة خارطة الطريق
 
-The final npm audit reports 89 total vulnerabilities (29 moderate, 59 high, 1 critical); production-only reports 69 (29 moderate, 39 high, 1 critical). The CI production audit gate intentionally blocks on high or critical findings. `npm audit fix --force` was not run because the proposed core Expo/React Native changes cross major versions and require an SDK-aligned upgrade and full native validation.
+- **المرحلة 0:** baseline/manifest موجودان على فروع مراجعة؛ غير مقبولين في `main` بعد.
+- **المرحلة 1:** جرد API جزئي موجود؛ capability/dependency/active-dormant inventory الكامل غير مثبت.
+- **المرحلة 2:** EAS ID موحد وبناء JavaScript جرى محلياً سابقاً؛ CI audit يمنع الدمج، ولا native release build.
+- **المرحلة 3:** توجد تغييرات SecureStore وconsent enforcement في PR #3/#4؛ سياسة الخصوصية مسودة، جدول الموافقات غير مطبق، واختبار staging غير منفذ.
+- **المرحلة 4:** PR #4 يطوّر مدقق grants فقط؛ حالة الإنتاج بها موانع موثقة، ولا staging/A-B evidence.
+- **المرحلة 5:** تصدير الحساب مغلق عمداً عبر `EXPORT_SCHEMA_VERIFICATION_PASSED=False` ومخزون غير مكتمل؛ لا يوجد worker/cron staging معتمد.
+- **المرحلة 6:** يوجد كود lifecycle/continuity واختبارات ساكنة؛ Gate 0/A-E والجهاز و72 ساعة غير منفذة على staging.
+- **المرحلتان 7–8:** موافقات مزودي AI موجودة جزئياً؛ في الفحص لم يوجد caller للـembedding client أو vector schema دائم، وتقييم الجودة/cache/cost/failure غير مقبول.
+- **المرحلتان 9–10:** health الحالي لا يثبت الجاهزية؛ RTDN لمسار Google Play يرجع 503 حتى يضبط التحقق، ولا يوجد إثبات اختبار اشتراك end-to-end على Play sandbox.
+- **المرحلة 11:** لا يوجد device/accessibility/performance matrix موثق.
+- **المراحل 12–13:** لا restore drill أو SLO/alert evidence أو soak test 72 ساعة.
+- **المرحلة 14:** لا إضافات OSS مسموحة قبل ADR/benchmark/review.
+- **المرحلتان 15–16:** لم تبدأ beta قانونية/مراجعة أسواق/release checklist؛ القرار **NO-GO**.
 
-The complete backend suite on Python 3.11.16 reports 185 passed and 9 skipped. The skips are external TCMA integration cases; no live Supabase database or external service was used. Four deprecation warnings remain, including Pydantic `.dict()` and upstream Supabase/Starlette APIs. Backend requirements are range-based rather than fully locked.
+## حدود التنفيذ والخطوة الآمنة التالية
 
-A static route inventory and project-owner regression tests were added. Gitleaks `8.30.1` scanned `origin/main..HEAD` with zero findings; two current-tree generic-pattern matches were reviewed as non-account values. GitHub Secret Scanning Alerts could not be read because the integration returned 403. No DAST or black-box authorization test against Railway, production RLS/storage-policy verification, or cross-account test with real Supabase sessions has run.
-
-## Roadmap and release boundary
-
-The user explicitly confirmed that the full P0.05 package is to be the repository baseline, overriding the roadmap's selective-integration recommendation for Phase 0. The current branch implements that source choice. This does not waive other roadmap acceptance gates: do not merge to `main` or call the product production-ready until critical/high dependency findings, EAS identity/native build, staging/RLS, Railway deployment validation, and device/release gates are resolved.
-
-The P0.05 source baseline and follow-up CI/test/dependency changes are committed locally on the isolated integration branch. Phase 0 source import and first local gates are complete; Phase 1 inventory is partial; Phase 2 build/config is partial; Phases 3–6 have only partial local/static evidence; Phases 7–16 have not passed acceptance. No production database or service was changed.
+لا تُعلن الجاهزية ولا تدمج إلى `main` حتى إغلاق اعتماديات frontend، وإثبات schema/RLS/ACL على staging، واجتياز A/B والتصدير/الحذف، واستقرار continuity، وبناء جهاز حقيقي. لأن Railway غير مربوط بالمستودع، يلزم من المالك اختيار الفرع/المصدر المراد ربطه من واجهة Railway عند الجاهزية؛ لا حاجة لإرسال مفاتيح أو متغيرات سرية في المحادثة.
