@@ -1,9 +1,9 @@
 # Build context: repository root. railway.json selects this file.
 # The image contains only the backend application, not the mobile client.
-FROM python:3.11-slim
+FROM python:3.11.17-slim-bookworm
 WORKDIR /app
-COPY backend/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+COPY backend/requirements.lock ./requirements.lock
+RUN python -m pip install --no-cache-dir --require-hashes -r requirements.lock
 COPY backend/ ./
 EXPOSE 8000
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
