@@ -17,7 +17,7 @@ def test_cloud_ai_consent_migration_is_private_and_owner_scoped():
     assert "edge_tts" in sql
     assert "audio_transcription" in sql
     assert "memory_embedding" in sql
-    assert "openai_embedding" in sql
+    assert "openai_embedding" not in sql
 
 
 def test_cloud_ai_consent_table_is_in_account_export_and_deletion_inventory():

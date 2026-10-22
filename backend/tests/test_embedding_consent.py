@@ -26,6 +26,7 @@ def test_embedding_cache_is_scoped_by_owner_and_provider(monkeypatch):
 
     calls = []
     monkeypatch.setattr(embedding_client, "EMBEDDING_PROVIDER", "gemini")
+    monkeypatch.setattr(embedding_client, "VECTOR_DIMENSION", 2)
     monkeypatch.setattr(cloud_ai_consent, "get_granted_providers", lambda user, purpose: {"gemini_embedding"} if user == "user-A" and purpose == "memory_embedding" else set())
     async def embed(text, user_id=None): calls.append((text, user_id)); return [1.0, 2.0]
     monkeypatch.setattr(embedding_client, "_gemini_embed", embed)
@@ -43,6 +44,7 @@ def test_local_embedding_mode_does_not_need_cloud_consent(monkeypatch):
 
     calls = []
     monkeypatch.setattr(embedding_client, "EMBEDDING_PROVIDER", "local")
+    monkeypatch.setattr(embedding_client, "LOCAL_VECTOR_DIMENSION", 1)
     monkeypatch.setattr(cloud_ai_consent, "get_granted_providers", lambda *_args: set())
     async def local(text): calls.append(text); return [0.1]
     monkeypatch.setattr(embedding_client, "_local_embed", local)
@@ -51,14 +53,51 @@ def test_local_embedding_mode_does_not_need_cloud_consent(monkeypatch):
     assert calls == ["private memory"]
 
 
-def test_openai_embedding_has_its_own_provider_grant(monkeypatch):
+def test_local_embedding_cache_is_owner_scoped_and_anonymous_results_are_not_cached(monkeypatch):
     from app.infrastructure.ai import embedding_client
     from app.privacy import cloud_ai_consent
 
     calls = []
+    monkeypatch.setattr(embedding_client, "EMBEDDING_PROVIDER", "local")
+    monkeypatch.setattr(embedding_client, "LOCAL_VECTOR_DIMENSION", 1)
+    monkeypatch.setattr(cloud_ai_consent, "get_granted_providers", lambda *_args: set())
+    async def local(text):
+        calls.append(text)
+        return [0.1]
+    monkeypatch.setattr(embedding_client, "_local_embed", local)
+
+    assert asyncio.run(embedding_client.generate_embedding("owner-scoped", user_id="user-A")) == [0.1]
+    assert asyncio.run(embedding_client.generate_embedding("owner-scoped", user_id="user-A")) == [0.1]
+    assert asyncio.run(embedding_client.generate_embedding("owner-scoped", user_id="user-B")) == [0.1]
+    assert asyncio.run(embedding_client.generate_embedding("anonymous", user_id=None)) == [0.1]
+    assert asyncio.run(embedding_client.generate_embedding("anonymous", user_id=None)) == [0.1]
+    assert calls == ["owner-scoped", "owner-scoped", "anonymous", "anonymous"]
+
+
+def test_openai_embedding_provider_is_rejected_without_fallback(monkeypatch):
+    from app.infrastructure.ai import embedding_client
+    from app.privacy import cloud_ai_consent
+
     monkeypatch.setattr(embedding_client, "EMBEDDING_PROVIDER", "openai")
-    monkeypatch.setattr(cloud_ai_consent, "get_granted_providers", lambda user, purpose: {"openai_embedding"} if user == "user-A" and purpose == "memory_embedding" else set())
-    async def embed(text, user_id=None): calls.append(user_id); return [3.0]
-    monkeypatch.setattr(embedding_client, "_openai_embed", embed)
-    assert asyncio.run(embedding_client.generate_embedding("memory", user_id="user-A")) == [3.0]
-    assert calls == ["user-A"]
+    monkeypatch.setattr(cloud_ai_consent, "get_granted_providers", lambda *_args: {"openai_embedding"})
+    async def forbidden(*args, **kwargs): raise AssertionError("unsupported provider must not fall back")
+    monkeypatch.setattr(embedding_client, "_gemini_embed", forbidden)
+    monkeypatch.setattr(embedding_client, "_local_embed", forbidden)
+    assert asyncio.run(embedding_client.generate_embedding("memory", user_id="user-A")) == []
+
+
+def test_embedding_dimension_mismatch_is_not_cached_or_returned(monkeypatch):
+    from app.infrastructure.ai import embedding_client
+    from app.privacy import cloud_ai_consent
+
+    monkeypatch.setattr(embedding_client, "EMBEDDING_PROVIDER", "gemini")
+    monkeypatch.setattr(embedding_client, "VECTOR_DIMENSION", 3)
+    monkeypatch.setattr(cloud_ai_consent, "get_granted_providers", lambda *_args: {"gemini_embedding"})
+    calls = []
+    async def wrong_dimension(text, user_id=None):
+        calls.append(text)
+        return [1.0, 2.0]
+    monkeypatch.setattr(embedding_client, "_gemini_embed", wrong_dimension)
+    assert asyncio.run(embedding_client.generate_embedding("memory", user_id="user-A")) == []
+    assert asyncio.run(embedding_client.generate_embedding("memory", user_id="user-A")) == []
+    assert calls == ["memory", "memory"]

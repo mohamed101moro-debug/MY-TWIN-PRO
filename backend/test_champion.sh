@@ -1,9 +1,14 @@
 #!/bin/bash
 
-API="https://my-twin-pro-production.up.railway.app"
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/test_target_guard.sh"
+: "${MYTWIN_TEST_PASSWORD:?Set a test-only password in the environment.}"
+if [[ ! "$MYTWIN_TEST_PASSWORD" =~ ^[A-Za-z0-9_-]{12,128}$ ]]; then
+  echo "MYTWIN_TEST_PASSWORD must be 12-128 alphanumeric, underscore, or hyphen characters." >&2
+  exit 2
+fi
+PASSWORD="$MYTWIN_TEST_PASSWORD"
 TIMESTAMP=$(date +%s)
 EMAIL="test_${TIMESTAMP}@mytwin.ai"
-PASSWORD="$PASSWORD"
 PASS=0
 FAIL=0
 
@@ -58,7 +63,7 @@ elif [ -n "$USER_ID" ]; then
     echo "      ↳ User: $USER_ID (Created)"
 else
     check 1 "Signup"
-    echo "      ↳ Response: $(echo "$SIGNUP" | head -c 100)"
+    echo "      ↳ Signup failed; response body suppressed."
 fi
 
 if [ -z "$TOKEN" ]; then
@@ -71,7 +76,7 @@ if [ -z "$TOKEN" ]; then
 else
     check 0 "Login"
 fi
-echo "      ↳ Token: ${TOKEN:0:30}..."
+echo "      ↳ Session token received; value suppressed."
 
 VERIFY=$(curl -s "$API/api/auth/verify-token?user_id=$USER_ID")
 VALID=$(echo "$VERIFY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('valid',False))" 2>/dev/null)

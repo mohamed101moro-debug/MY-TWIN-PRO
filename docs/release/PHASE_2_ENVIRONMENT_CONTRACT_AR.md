@@ -6,7 +6,7 @@
 
 1. `EXPO_PUBLIC_API_BASE_URL` في بيئة بناء Expo/EAS، ويجب أن يشير إلى API للبيئة نفسها (dev أو staging أو production).
 2. `extra.API_URL` في Expo app config كقيمة fallback معتمدة.
-3. عنوان الإنتاج الحالي كـ fallback نهائي فقط عندما لا توجد قيمة صريحة.
+3. `https://my-twin-pro-production-fd77.up.railway.app` كـ fallback نهائي فقط عندما لا توجد قيمة صريحة؛ لا تستخدم نطاق Railway القديم.
 
 القيمة public وليست secret؛ يسمح بعنوان host بلا scheme لأجل التوافق، ويُحوّل إلى HTTPS. يجب ألا يُمرر أي service-role key أو مفتاح خاص إلى `EXPO_PUBLIC_*` أو `extra`.
 
@@ -38,3 +38,7 @@ WebSocket يشتق مخطط `ws/wss` من عنوان API نفسه، لذلك ل�
 ## قرار هوية EAS المعتمد
 
 بتاريخ 2026-10-11 أكد مالك المشروع أن UUID الصحيح هو `49db469b-9aca-4ffc-8b34-88b140528840`، وهو المعرف الموجود في `extra.eas.projectId`. يجب أن يشير `updates.url` إلى UUID نفسه. هذا القرار يُوحّد المستودع فقط؛ لا يثبت وجود جلسة EAS أو صلاحية credentials ولا يعني أن native build أو OTA قد نُفذ.
+
+## الحالة التشغيلية الحالية — 2026-10-21
+
+زوّد المالك الفريق بنطاق Railway `https://my-twin-pro-production-fd77.up.railway.app/` وأكد أن الخدمة تعمل، ثم أفاد بأن Railway غير مربوط حالياً بالمستودع. لذلك لا يوجد إثبات أن الفرع أو commit الحالي يصل تلقائياً إلى هذه الخدمة. فحص `/health` وحده يثبت liveness فقط؛ لا يثبت اتصال قاعدة البيانات أو تطابق مخططها. لا تعِد ربط الخدمة أو تنشر تغييرات دون اختيار الفرع/المصدر المقصود ومراجعة البوابات.

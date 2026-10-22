@@ -8,13 +8,13 @@ describe('resolveApiBaseUrl', () => {
   });
 
   it('uses Expo app config when no environment override is supplied', () => {
-    expect(resolveApiBaseUrl(undefined, 'my-twin-pro-production.up.railway.app/'))
-      .toBe('https://my-twin-pro-production.up.railway.app');
+    expect(resolveApiBaseUrl(undefined, 'my-twin-pro-production-fd77.up.railway.app/'))
+      .toBe('https://my-twin-pro-production-fd77.up.railway.app');
   });
 
   it('uses the production fallback only when no configured URL exists', () => {
     expect(resolveApiBaseUrl('', undefined))
-      .toBe('https://my-twin-pro-production.up.railway.app');
+      .toBe('https://my-twin-pro-production-fd77.up.railway.app');
   });
 
   it('rejects non-http schemes and query strings', () => {
@@ -28,6 +28,6 @@ describe('resolveApiBaseUrl', () => {
 
   it('ignores values with an unsupported shape and uses the documented fallback', () => {
     expect(resolveApiBaseUrl(undefined, { host: 'api.example.test' }))
-      .toBe('https://my-twin-pro-production.up.railway.app');
+      .toBe('https://my-twin-pro-production-fd77.up.railway.app');
   });
 });

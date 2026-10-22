@@ -26,6 +26,63 @@ def test_health_endpoint_is_public_and_healthy():
     assert response.json()["api"] == "healthy"
 
 
+def test_root_health_routes_are_registered_once():
+    paths = [route.path for route in app.routes if hasattr(route, "path")]
+    assert paths.count("/") == 1
+    assert paths.count("/health") == 1
+    assert paths.count("/api/health") == 1
+    assert paths.count("/ready") == 1
+
+
+def test_ready_endpoint_checks_database_and_auth_profile_schema_without_reading_rows(monkeypatch):
+    from types import SimpleNamespace
+    import app.infrastructure.database.supabase_client as supabase_client
+
+    selected = []
+
+    class Query:
+        def select(self, columns):
+            selected.append(columns)
+            return self
+        def limit(self, count):
+            assert count == 0
+            return self
+        def execute(self):
+            return SimpleNamespace(data=[])
+
+    class DB:
+        def table(self, name):
+            assert name == "profiles"
+            return Query()
+
+    monkeypatch.setattr(supabase_client, "get_db", lambda: DB())
+    response = client.get("/ready")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+    assert response.json()["checks"]["profile_auth_schema"] == "ready"
+    assert selected == ["id,status,deleted_at"]
+
+
+def test_ready_fails_closed_when_database_or_profile_schema_is_unavailable(monkeypatch):
+    import app.infrastructure.database.supabase_client as supabase_client
+
+    class Query:
+        def select(self, _columns): return self
+        def limit(self, _count): return self
+        def execute(self): raise RuntimeError("schema unavailable")
+
+    class DB:
+        def table(self, _name): return Query()
+
+    monkeypatch.setattr(supabase_client, "get_db", lambda: DB())
+    response = client.get("/ready")
+    assert response.status_code == 503
+    assert response.json()["status"] == "not_ready"
+    assert response.json()["checks"]["database"] == "unavailable"
+    # Keep the Railway process liveness probe independent from database readiness.
+    assert client.get("/health").status_code == 200
+
+
 @pytest.mark.parametrize(
     ("method", "path", "payload"),
     [

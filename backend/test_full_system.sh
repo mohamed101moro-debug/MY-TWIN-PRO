@@ -1,5 +1,11 @@
 #!/bin/bash
-API="https://my-twin-pro-production.up.railway.app"
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/test_target_guard.sh"
+: "${MYTWIN_TEST_PASSWORD:?Set a test-only password in the environment.}"
+if [[ ! "$MYTWIN_TEST_PASSWORD" =~ ^[A-Za-z0-9_-]{12,128}$ ]]; then
+  echo "MYTWIN_TEST_PASSWORD must be 12-128 alphanumeric, underscore, or hyphen characters." >&2
+  exit 2
+fi
+PASSWORD="$MYTWIN_TEST_PASSWORD"
 PASS=0
 FAIL=0
 
