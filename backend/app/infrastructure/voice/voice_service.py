@@ -41,8 +41,17 @@ async def speak(
     if not text or not text.strip():
         return None
 
+    try:
+        from app.privacy.cloud_ai_consent import get_granted_providers
+        allowed = get_granted_providers(user_id, "voice_synthesis")
+    except Exception:
+        allowed = set()
+    if not user_id or not allowed:
+        return None
+
     # 1. فحص التخزين المؤقت
-    cache_key = f"voice:{hashlib.md5(text.encode()).hexdigest()}:{lang}:{gender}:{emotion}"
+    provider_scope = ",".join(sorted(allowed))
+    cache_key = f"voice:{user_id}:{provider_scope}:{hashlib.md5(text.encode()).hexdigest()}:{lang}:{gender}:{emotion}"
     try:
         from app.infrastructure.cache.cache_service import get as cache_get
         cached = cache_get(cache_key)
@@ -52,14 +61,16 @@ async def speak(
 
     # 2. محاولة ElevenLabs (للمميزين)
     is_premium = tier in ["premium", "pro", "yearly"]
-    if is_premium and ELEVENLABS_KEY:
-        audio = await _elevenlabs(text, gender, lang, emotion)
+    if is_premium and ELEVENLABS_KEY and "elevenlabs" in allowed:
+        audio = await _elevenlabs(text, gender, lang, emotion, user_id=user_id)
         if audio:
             _cache_audio(cache_key, audio)
             return audio
 
     # 3. Edge TTS (مجاني، الجميع)
-    audio = await _edge_tts(text, gender, lang, emotion, personality)
+    if "edge_tts" not in allowed:
+        return None
+    audio = await _edge_tts(text, gender, lang, emotion, personality, user_id=user_id)
     if audio:
         _cache_audio(cache_key, audio)
     return audio
@@ -74,7 +85,13 @@ def _cache_audio(key: str, audio: bytes):
 
 
 # ========== مزود ElevenLabs ==========
-async def _elevenlabs(text: str, gender: str, lang: str, emotion: str) -> Optional[bytes]:
+async def _elevenlabs(text: str, gender: str, lang: str, emotion: str, user_id: Optional[str] = None) -> Optional[bytes]:
+    try:
+        from app.privacy.cloud_ai_consent import get_granted_providers
+        if "elevenlabs" not in get_granted_providers(user_id, "voice_synthesis"):
+            return None
+    except Exception:
+        return None
     if not ELEVENLABS_KEY:
         return None
     try:
@@ -98,7 +115,13 @@ async def _elevenlabs(text: str, gender: str, lang: str, emotion: str) -> Option
 
 
 # ========== مزود Edge TTS ==========
-async def _edge_tts(text: str, gender: str, lang: str, emotion: str, personality: str = "friend") -> Optional[bytes]:
+async def _edge_tts(text: str, gender: str, lang: str, emotion: str, personality: str = "friend", user_id: Optional[str] = None) -> Optional[bytes]:
+    try:
+        from app.privacy.cloud_ai_consent import get_granted_providers
+        if "edge_tts" not in get_granted_providers(user_id, "voice_synthesis"):
+            return None
+    except Exception:
+        return None
     try:
         import edge_tts
         voice = EDGE_VOICES.get(gender, EDGE_VOICES["female"]).get(lang, "ar-EG-SalmaNeural")

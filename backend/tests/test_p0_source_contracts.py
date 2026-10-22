@@ -35,10 +35,11 @@ def test_private_lifecycle_tables_have_explicit_acl_migration():
     assert "REVOKE ALL ON TABLE" in source
 
 
-def test_cloud_stt_is_fail_closed_until_consent_is_implemented():
+def test_cloud_stt_requires_authenticated_owner_and_provider_consent():
     source = (ROOT / "backend/app/api/routes/stt_routes.py").read_text(encoding="utf-8")
-    assert "Cloud STT stays disabled until explicit, revocable per-user consent" in source
-    assert "status_code=503" in source
+    assert "Depends(get_current_user_id)" in source
+    assert 'get_granted_providers(user_id, "audio_transcription")' in source
+    assert "max_length=11_200_000" in source
 
 
 def test_auth_service_uses_canonical_session_boundary_for_login_and_logout():

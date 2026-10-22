@@ -132,6 +132,9 @@ class UnifiedProactiveEngine:
         """إرسال إشعار عبر OneSignal"""
         if not ONESIGNAL_APP_ID or not ONESIGNAL_API_KEY:
             return False
+        from app.infrastructure.push.preferences import proactive_notifications_enabled
+        if not proactive_notifications_enabled(user_id):
+            return False
         try:
             from app.infrastructure.database.supabase_client import get_db
             db = get_db()
