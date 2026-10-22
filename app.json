@@ -1,0 +1,81 @@
+{
+  "expo": {
+    "name": "My Twin",
+    "slug": "my-twin",
+    "owner": "soulsync.7",
+    "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "orientation": "portrait",
+    "scheme": "mytwin",
+    "userInterfaceStyle": "dark",
+    "icon": "./assets/brand/icon.png",
+    "splash": {
+      "image": "./assets/splash/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0014"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.soulsync.mytwin",
+      "buildNumber": "1",
+      "infoPlist": {}
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/brand/adaptive-icon.png",
+        "backgroundColor": "#0A0014"
+      },
+      "package": "com.soulsync.mytwin",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.VIBRATE",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS",
+        "com.android.vending.BILLING"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-localization",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "newArchEnabled": false,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "minSdkVersion": 24,
+            "enableProguardInReleaseBuilds": false
+          },
+          "ios": {
+            "newArchEnabled": false,
+            "deploymentTarget": "15.1"
+          }
+        }
+      ],
+      "./plugins/withGooglePlayBilling",
+      "./plugins/withAndroidCoreCap"
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "49db469b-9aca-4ffc-8b34-88b140528840"
+      },
+      "API_URL": "my-twin-pro-production.up.railway.app",
+      "ENVIRONMENT": "production"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6cb78668-322b-476f-ab25-4136d85f8d68"
+    },
+    "sdkVersion": "52.0.0"
+  }
+}
