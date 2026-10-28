@@ -66,7 +66,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 token = auth.split(" ", 1)[1]
                 from jose import jwt as jose_jwt
                 import os
-                secret = os.getenv("JWT_SECRET", "mytwin-secret")
+                secret = os.getenv("JWT_SECRET") or os.getenv("SUPABASE_JWT_SECRET")
+                if not secret:
+                    raise RuntimeError("JWT verification secret is not configured")
                 payload = jose_jwt.decode(token, secret, algorithms=["HS256"])
                 user_id = payload.get("sub") or payload.get("user_id")
         except Exception:

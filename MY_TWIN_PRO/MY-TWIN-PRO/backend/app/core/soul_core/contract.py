@@ -44,6 +44,9 @@ class KernelContext:
     async def memory_retrieve(self, user_id, query, limit=5):
         from app.memory.unified_memory import unified_memory_engine
         return await unified_memory_engine.retrieve(user_id, query, limit=limit)
+    async def engine_memory_retrieve(self, user_id, engine_name, limit=5):
+        from app.memory.unified_memory import unified_memory_engine
+        return await unified_memory_engine.get_engine_outputs(user_id, engine_name, limit=limit)
     def log(self, msg): self._kernel._log(msg)
 
 @runtime_checkable

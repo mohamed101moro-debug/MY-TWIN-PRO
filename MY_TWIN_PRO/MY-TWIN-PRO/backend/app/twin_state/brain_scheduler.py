@@ -158,10 +158,61 @@ class BrainScheduler:
             from app.twin_state.internal_state import twin_internal_state; await twin_internal_state.add_pending_question(uid, r)
     async def _d_constitution(self, uid):
         from app.twin_state.constitution_drift import get_weights; await get_weights(uid)
+    async def _process_life_intention(self, uid):
+        """Interpret lifecycle evidence without turning it into a command.
+
+        This is deliberately the only scheduler read of last_life_intention in
+        this closure. No speech, dream, surprise, or direct user-visible action
+        is allowed here. The evidence can only update bounded internal state.
+        """
+        from app.twin_state.internal_state import twin_internal_state
+        st = await twin_internal_state.get_state(uid)
+        raw = st.get("last_life_intention")
+        if not isinstance(raw, dict) or not raw.get("intention") or raw.get("processed_at"):
+            return
+
+        intention = raw.get("intention")
+        from app.twin_state.brain_evidence import derive_meaning
+        # Meaning is deterministic evidence interpretation. It is persisted with
+        # the lifecycle record and is never itself an instruction to speak/act.
+        raw = dict(raw)
+        if not isinstance(raw.get("meaning"), dict):
+            raw["meaning"] = derive_meaning(raw, st)
+        if intention == "observe":
+            effect = "observe_only"
+        elif intention == "stay_present":
+            effect = "maintain_presence"
+        elif intention == "reduce_presence":
+            st["energy_level"] = max(0.2, float(st.get("energy_level", 0.5)) - 0.05)
+            effect = "bounded_energy_reduction"
+        elif intention == "rest":
+            current = float(st.get("energy_level", 0.5))
+            # Rest is evidence of reduced activity, not a wake-up/recharge
+            # command. Never increase energy as a side effect of processing it.
+            st["energy_level"] = max(0.2, current - 0.15)
+            effect = "bounded_rest_reduction"
+        else:
+            return
+
+        raw = dict(raw)
+        raw["backend_effect"] = effect
+        raw["processed_at"] = datetime.now(timezone.utc).isoformat()
+        raw["source_of_truth"] = "internal_state"
+        st["last_life_intention"] = raw
+        saved = await twin_internal_state._save_state(uid, st)
+        if not saved:
+            # Fail closed: if the processed marker and state effect cannot be
+            # persisted, the intention must remain retryable on the next cycle.
+            raise RuntimeError("life_intention_processing_persistence_failed")
+
     async def _engine_cycle(self):
         users = (await self._get_active_users())[:5]
         if not users: return
         for uid in users:
+            try:
+                await self._process_life_intention(uid)
+            except Exception as e:
+                logger.debug(f"Engine/life_intention {uid}: {e}")
             try:
                 from app.memory.unified_memory import unified_memory_engine
             except Exception as e:

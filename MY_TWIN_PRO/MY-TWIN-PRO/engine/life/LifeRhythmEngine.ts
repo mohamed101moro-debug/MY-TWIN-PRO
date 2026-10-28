@@ -1,5 +1,4 @@
 import { stateBus } from '../../src/core/StateBus';
-import { presenceEngine } from '../presence/PresenceEngine';
 import { devicePresenceEngine } from '../device/DevicePresenceEngine';
 
 export type LifePhase = 'deep_sleep' | 'dawn' | 'morning' | 'afternoon' | 'evening' | 'night' | 'late_night';
@@ -28,13 +27,19 @@ export class LifeRhythmEngine {
     this.state = this.calculateState();
   }
 
-  start(): void { this.intervalId = setInterval(() => this.update(), 30000); }
-  stop(): void { if (this.intervalId) clearInterval(this.intervalId); }
+  start(): void {
+    if (this.intervalId) return;
+    this.intervalId = setInterval(() => this.update(), 30000);
+  }
+  stop(): void {
+    if (!this.intervalId) return;
+    clearInterval(this.intervalId);
+    this.intervalId = null;
+  }
   recordInteraction(): void { this.lastUserInteraction = Date.now(); }
 
   private update(): void {
     this.state = this.calculateState();
-    presenceEngine.setEmotion('neutral', this.state.energy);
     stateBus.emit('life:rhythm_changed', this.state);
   }
 
@@ -87,7 +92,7 @@ export class LifeRhythmEngine {
   private getUniqueGreeting(options: string[]): string {
     const available = options.filter(g => !this.usedGreetings.has(g));
     if (available.length === 0) { this.usedGreetings.clear(); return options[0]; }
-    const chosen = available[Math.floor(Math.random() * available.length)];
+    const chosen = available[0];
     this.usedGreetings.add(chosen);
     return chosen;
   }

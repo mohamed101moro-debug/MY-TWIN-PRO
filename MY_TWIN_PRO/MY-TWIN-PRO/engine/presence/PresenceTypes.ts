@@ -3,6 +3,9 @@ export interface RGB { r: number; g: number; b: number; }
 export interface PresenceState {
   emotion?: string; intensity?: number;
   energy?: number; pulse?: number; breathing?: number;
+  ambientLight?: number; motion?: number; proximity?: number;
+  batteryLevel?: number; isCharging?: boolean; performanceTier?: number;
+  reducedMotion?: boolean; gazeLock?: boolean;
   eyeOpenness?: number; eyeGlow?: number; pupilSize?: number; gazeX?: number; gazeY?: number;
   warmth?: number; attention?: number; anticipation?: number;
   voiceLevel?: number; speaking?: boolean; listening?: boolean; thinking?: boolean;

@@ -72,7 +72,7 @@ class BeliefRevisionEngine(BaseEngine):
         uid = event.user_id or event.payload.get("user_id", "")
         try:
             from app.memory.unified_memory import unified_memory_engine as m
-            old = await m.retrieve(uid, "[ENGINE:semantic_fact]", limit=10)
+            old = {"memories": await m.get_engine_outputs(uid, "semantic_fact", limit=10)}
             week = await m.get_patterns(uid, 7)
         except Exception: return {"revised": 0}
         revised = 0; dom = week.get("dominant_emotion", "neutral")
@@ -94,7 +94,7 @@ class IdentityConsistencyEngine(BaseEngine):
         try:
             from app.twin_state.internal_state import twin_internal_state as t
             dna_now = await t.get_personality_dna(uid)
-            prev = await self.ctx.memory_retrieve(uid, "[ENGINE:identity_consistency]", limit=1)
+            prev = {"memories": await self.ctx.engine_memory_retrieve(uid, "identity_consistency", limit=1)}
             drift = 0.0
             for mem in prev.get("memories", []):
                 i = mem.get("content", "").find("{")
@@ -169,7 +169,7 @@ class ProactiveLifeEngine(BaseEngine):
         except Exception: return []
     async def _today_count(self, uid):
         try:
-            outs = await self.ctx.memory_retrieve(uid, "[ENGINE:proactive_push]", limit=5)
+            outs = {"memories": await self.ctx.engine_memory_retrieve(uid, "proactive_push", limit=5)}
             today = _now().date().isoformat()
             return sum(1 for m in outs.get("memories", []) if today in m.get("created_at", ""))
         except Exception: return 0

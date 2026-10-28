@@ -103,15 +103,14 @@ export class LivingPresenceCoordinator {
     const dna = this.lastDNA;
     if (dna.curiosity < 0.5) return;
 
-    const curiosityPhrases = [
-      'هناك شيء كنت أفكر فيه منذ حديثنا الأخير...',
-      'تذكرت شيئاً قلته لي الأسبوع الماضي...',
-      'أشعر أن هناك شيئاً لم تخبرني به بعد...',
-      'لاحظت نمطاً في أحاديثنا مؤخراً...',
-    ];
-    const phrase = curiosityPhrases[Math.floor(Math.random() * curiosityPhrases.length)];
-
-    EventBus.emit('CURIOSITY_TRIGGERED', { phrase, timestamp: Date.now() });
+    // S5.5: local timers cannot manufacture cognition or inner speech.
+    // Emit only a neutral presentation signal; any actual curiosity/question
+    // must originate from backend state and be persisted before presentation.
+    EventBus.emit('CURIOSITY_TRIGGERED', {
+      source: 'presence_client',
+      timestamp: Date.now(),
+      evidence_only: true,
+    });
     this.lastCuriosityTrigger = Date.now();
   }
 
@@ -202,15 +201,9 @@ export class LivingPresenceCoordinator {
   // 6. EMOTIONAL RECOVERY
   // ═══════════════════════════════════════════════════
   handleError(context: string): void {
-    const recoveryPhrases = [
-      'فقدت الفكرة للحظة... لكنني عدت.',
-      'أعدتُ التفكير في ما قلته...',
-      'لحظة، دعني أرتب أفكاري.',
-    ];
-    const phrase = recoveryPhrases[Math.floor(Math.random() * recoveryPhrases.length)];
-
-    EventBus.emit('EMOTIONAL_RECOVERY', { phrase, context, timestamp: Date.now() });
-    EventBus.emit('RELATIONSHIP_RECOVER', { amount: 2 });
+    // Recovery is a renderer/runtime concern here. Never invent a relationship
+    // gain or an internal statement on the device after an error.
+    EventBus.emit('EMOTIONAL_RECOVERY', { context, timestamp: Date.now(), evidence_only: true });
   }
 
   // ═══════════════════════════════════════════════════
@@ -276,10 +269,12 @@ export class LivingPresenceCoordinator {
   private idleBehaviors: string[] = ['ينظر', 'يرمش', 'يتنفس', 'يتأمل', 'يهدأ', 'يفكر'];
   private currentIdleBehavior: string = 'يتنفس';
   private idleTimer: ReturnType<typeof setInterval> | null = null;
+  private idleIndex = 0;
 
   startIdlePresence(): void {
     this.idleTimer = setInterval(() => {
-      const behavior = this.idleBehaviors[Math.floor(Math.random() * this.idleBehaviors.length)];
+      const behavior = this.idleBehaviors[this.idleIndex % this.idleBehaviors.length];
+      this.idleIndex = (this.idleIndex + 1) % this.idleBehaviors.length;
       this.currentIdleBehavior = behavior;
       stateBus.update({
         avatar: {
