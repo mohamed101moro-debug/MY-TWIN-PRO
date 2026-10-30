@@ -6,7 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 
-const BASE_URL = 'https://my-twin-pro-production.up.railway.app';
+const BASE_URL = 'https://live-game-show-production-317b.up.railway.app';
 
 // ================================================================
 // الإعدادات
@@ -129,6 +129,9 @@ async function request(
 
       // ── استجابة ناجحة ────────────────────────────────────
       const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('text/html')) {
+        throw new Error('عنوان API أعاد صفحة الويب بدلاً من JSON. تحقق من نشر Backend على نفس العنوان.');
+      }
       if (contentType.includes('application/json')) {
         return await response.json();
       }

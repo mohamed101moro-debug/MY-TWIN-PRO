@@ -142,7 +142,7 @@ export default function LivingWorld() {
     if (!userId) return;
     let ws: WebSocket | null = null; let alive = true; let retry: any = null;
     const connect = () => { try {
-      ws = new WebSocket('wss://my-twin-pro-production.up.railway.app/ws/live?user_id=' + userId);
+      ws = new WebSocket('wss://live-game-show-production-317b.up.railway.app/ws/live?user_id=' + userId);
       ws.onmessage = (e) => { try { const d = JSON.parse(String(e.data)); if (d?.type === 'presence' && typeof d.energy === 'number') stateBus.patch({ energy: clamp01(d.energy) }); } catch {} };
       ws.onclose = () => { if (alive) retry = setTimeout(connect, 15000); };
       ws.onerror = () => { try { ws?.close(); } catch {} };

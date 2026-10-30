@@ -30,7 +30,7 @@ export interface PurchaseResult {
 
 const API_URL = typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL
   ? process.env.EXPO_PUBLIC_API_URL
-  : 'https://my-twin-pro-production.up.railway.app';
+  : 'https://live-game-show-production-317b.up.railway.app';
 
 export class CommercePlugin {
   private initialized = false;

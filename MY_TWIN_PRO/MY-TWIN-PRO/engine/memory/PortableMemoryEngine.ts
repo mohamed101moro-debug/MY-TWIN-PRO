@@ -28,7 +28,7 @@ export interface TrainingDataExport {
   }>;
 }
 
-const API_BASE = 'https://my-twin-pro-production.up.railway.app';
+const API_BASE = 'https://live-game-show-production-317b.up.railway.app';
 const INTERNAL_API_KEY = ((global as any)?.process?.env?.EXPO_PUBLIC_SOUL_SYNC_INTERNAL_KEY) || ''; // من متغيرات البيئة فقط — أداة داخلية مؤجلة لما بعد الإطلاق
 
 export class PortableMemoryEngine {

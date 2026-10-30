@@ -1,5 +1,5 @@
 #!/bin/bash
-API="https://my-twin-pro-production.up.railway.app"
+API="https://live-game-show-production-317b.up.railway.app"
 EMAIL="${MYTWIN_TEST_EMAIL:?Set a dedicated test email in the environment.}"
 PASSWORD="$PASSWORD"
 

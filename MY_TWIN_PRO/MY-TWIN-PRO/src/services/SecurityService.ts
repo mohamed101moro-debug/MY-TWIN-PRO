@@ -42,7 +42,7 @@ export class SecurityService {
       const refresh = await AsyncStorage.getItem(KEYS.REFRESH_TOKEN);
       if (!refresh) return false;
 
-      const response = await fetch('https://my-twin-pro-production.up.railway.app/api/auth/refresh', {
+      const response = await fetch('https://live-game-show-production-317b.up.railway.app/api/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refresh }),

@@ -1,5 +1,5 @@
 #!/bin/bash
-API="https://my-twin-pro-production.up.railway.app"
+API="https://live-game-show-production-317b.up.railway.app"
 PASS=0
 FAIL=0
 
