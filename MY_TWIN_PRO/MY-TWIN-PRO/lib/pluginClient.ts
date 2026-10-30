@@ -34,7 +34,7 @@ class PluginRegistry {
   async loadFromBackend(): Promise<void> {
     try {
       // استخدام الرابط الصحيح لـ API
-      const response = await fetch('https://my-twin-pro-production-b744.up.railway.app/');
+      const response = await fetch('https://my-twin-pro-production.up.railway.app/');
       const data = await response.json();
       
       if (data && data.plugins && Array.isArray(data.plugins)) {

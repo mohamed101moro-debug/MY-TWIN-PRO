@@ -28,6 +28,7 @@ jobs:
           backend/tests/test_s5_5_3_production_gate_contract.py
           backend/tests/test_s6a_entity_identity_foundation.py
           backend/tests/test_s6v_visual_presence_policy.py
+          backend/tests/test_challenge_routes.py
       - name: Architecture gates
         shell: bash
         run: |

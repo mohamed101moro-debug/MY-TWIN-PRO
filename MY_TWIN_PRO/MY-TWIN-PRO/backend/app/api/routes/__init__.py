@@ -6,6 +6,7 @@ from app.api.routes import creator_routes, dream_routes, life_coach_routes
 from app.api.routes import image_lab_routes, smart_home_routes, task_manager_routes
 from app.api.routes import economy_routes, ads, billing, referral
 from app.api.routes import perception_snapshot, push, system_routes
+from app.api.routes import challenge_routes
 api_router.include_router(auth.router)
 api_router.include_router(chat.router)
 api_router.include_router(memories.router)
@@ -26,6 +27,7 @@ api_router.include_router(referral.router)
 api_router.include_router(push.router)
 api_router.include_router(perception_snapshot.router)
 api_router.include_router(system_routes.router)
+api_router.include_router(challenge_routes.router)
 
 # ── تسجيل الراوترات اليتيمة (محروس — لا يكسر الإقلاع) ──
 import logging as _lg
