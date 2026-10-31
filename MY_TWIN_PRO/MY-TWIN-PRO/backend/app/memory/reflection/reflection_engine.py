@@ -22,7 +22,7 @@ async def store_reflection(user_id: str, insight_type: str, insight_text: str,
          "emotion": related_emotion, "ts": datetime.now(timezone.utc).isoformat()})
 async def get_user_insights(user_id: str, min_confidence: float = 0.4) -> Dict:
     from app.memory.unified_memory import unified_memory_engine as m
-    outs = await m.retrieve(user_id, "[ENGINE:reflection]", limit=15)
+    outs = {"memories": await m.get_engine_outputs(user_id, "reflection", limit=15)}
     insights = []
     for mem in outs.get("memories", []):
         try:

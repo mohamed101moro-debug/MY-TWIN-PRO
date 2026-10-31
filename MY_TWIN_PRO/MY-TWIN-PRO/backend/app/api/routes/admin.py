@@ -16,14 +16,14 @@ from app.infrastructure.database.supabase_client import get_db
 
 logger = logging.getLogger("admin_routes")
 router = APIRouter(prefix="/api/admin", tags=["admin"])
-ADMIN_KEY = os.getenv("ADMIN_API_KEY", "admin-secret-key")
+ADMIN_KEY = os.getenv("ADMIN_API_KEY")
 
 # ============================================================
 # المصادقة الإدارية
 # ============================================================
 async def verify_admin(x_admin_key: str = Header(...)):
     """التحقق من صلاحية مدير النظام"""
-    if x_admin_key != ADMIN_KEY:
+    if not ADMIN_KEY or x_admin_key != ADMIN_KEY:
         raise HTTPException(403, "Forbidden: Invalid Admin Key")
 
 # ============================================================

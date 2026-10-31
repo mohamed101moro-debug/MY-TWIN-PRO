@@ -15,7 +15,7 @@ import { useRouter } from 'expo-router';
 import { useAppTheme, ThemeColors } from '../engine/colors';
 import { useTwinStore } from '../store/useTwinStore';
 import { stateBus } from '../src/core/StateBus';
-import { presenceBridge, presenceEngine } from '../src/core/PresenceBridge';
+import { presenceBridge } from '../src/core/PresenceBridge';
 import { EventBus } from '../src/core/EventBus';
 import { devicePresenceEngine } from '../engine/device/DevicePresenceEngine';
 import { useVoicePresence } from '../src/hooks/useVoicePresence';
@@ -57,27 +57,6 @@ const emotionHaptic = async (em: string) => {
   } catch {}
 };
 
-const buildPresencePatch = (r: any): any => {
-  const em = String(r?.twin_emotional_state?.current_emotion || r?.emotion?.primary || r?.emotion || 'calm').toLowerCase();
-  const intensity = Number(r?.twin_emotional_state?.intensity || r?.emotion?.intensity || 0.5);
-  const valence =
-    em.includes('joy') || em.includes('happ') || em.includes('excit') || em.includes('caring') ? 0.6 + intensity * 0.35
-    : em.includes('sad') || em.includes('fear') ? -(0.4 + intensity * 0.35)
-    : em.includes('ang') ? -(0.6 + intensity * 0.35)
-    : em.includes('surpr') ? 0.5 : em.includes('curious') ? 0.35 : 0.1;
-  const arousal =
-    em.includes('excit') || em.includes('ang') || em.includes('surpr') ? 0.8 + intensity * 0.18
-    : em.includes('sleep') ? 0.12 : em.includes('calm') ? 0.22 : 0.4 + intensity * 0.25;
-  const bond = Number(r?.new_bond ?? r?.bond_level ?? 0);
-  const connection = bond > 1 ? bond / 100 : bond;
-  return {
-    emotionValence: valence, arousal,
-    curiosity: em.includes('curious') ? 0.85 : 0.45,
-    focus: em.includes('focus') || em.includes('think') ? 0.88 : 0.5,
-    connection: Math.max(stateBus.getState().connection, connection || 0),
-    energy: clamp01(0.5 + intensity * 0.35),
-  };
-};
 
 export default function LivingWorld() {
   const userId = useTwinStore(s => s.userId) || '';
@@ -116,33 +95,22 @@ export default function LivingWorld() {
   }, []);
 
   useEffect(() => {
+    // Keep the screen toggle authoritative to the hook's real recorder state.
+    // AppState background shutdown can end recording without passing through the button.
+    setIsListening(voicePresence.isRecording);
     if (voicePresence.isRecording) stateBus.patch({ voiceLevel: voicePresence.level, listening: true });
-    else if (!stateBus.getState().speaking) stateBus.patch({ voiceLevel: 0 });
+    else {
+      if (!stateBus.getState().speaking) stateBus.patch({ voiceLevel: 0 });
+      stateBus.patch({ listening: false });
+    }
   }, [voicePresence.level, voicePresence.isRecording]);
 
-  useEffect(() => {
-    const cv = setInterval(() => { try { require('../engine/sensor/SensorContextEngine').sensorContextEngine.evaluate(); } catch {} }, 30000);
-    return () => clearInterval(cv);
-  }, []);
 
-  useEffect(() => {
-    const iv = setInterval(() => {
-      try {
-        const s: any = devicePresenceEngine.getSensors();
-        const rawL = s.lightLevel;
-        const lightN = rawL == null ? 0.5 : (rawL > 1 ? clamp01(Math.log10(Math.max(1, rawL) + 1) / 4) : clamp01(rawL));
-        stateBus.patch({ ambientLight: lightN, movement: s.userWalking ? 0.7 : s.userStationary ? 0 : 0.3, proximity: s.faceDetected ? 0.85 : 0.5, userPresent: !!s.faceDetected, night: !!s.isNightTime });
-      } catch {}
-    }, 600);
-    return () => clearInterval(iv);
-  }, []);
 
   useEffect(() => {
     if (!userId) return;
-    try { const { bootstrapCoordinator } = require('../src/core/BootstrapCoordinator'); bootstrapCoordinator.bootstrap().catch(() => {}); } catch {}
-    try { const { session } = require('../src/core/SessionHolder'); session.userId = userId; } catch {}
+    try { const { bootstrapCoordinator } = require('../src/core/BootstrapCoordinator'); bootstrapCoordinator.refreshUser(userId).catch(() => {}); } catch {}
     try { require('../lib/analytics').initAnalytics(); } catch {}
-    presenceBridge.start();
     try { getVoice()?.start?.(); } catch {}
     try { const { refreshPlace } = require('../engine/place/PlaceBridge'); refreshPlace(userId); } catch {}
     light('perception', 3000);
@@ -153,7 +121,6 @@ export default function LivingWorld() {
     return () => {
       try { getVoice()?.stop?.(); } catch {}
       try { u1?.(); u2?.(); } catch {}
-      presenceBridge.stop();
     };
   }, [userId]);
 
@@ -175,7 +142,7 @@ export default function LivingWorld() {
     if (!userId) return;
     let ws: WebSocket | null = null; let alive = true; let retry: any = null;
     const connect = () => { try {
-      ws = new WebSocket('wss://my-twin-pro-production.up.railway.app/ws/live?user_id=' + userId);
+      ws = new WebSocket('wss://live-game-show-production-317b.up.railway.app/ws/live?user_id=' + userId);
       ws.onmessage = (e) => { try { const d = JSON.parse(String(e.data)); if (d?.type === 'presence' && typeof d.energy === 'number') stateBus.patch({ energy: clamp01(d.energy) }); } catch {} };
       ws.onclose = () => { if (alive) retry = setTimeout(connect, 15000); };
       ws.onerror = () => { try { ws?.close(); } catch {} };
@@ -268,13 +235,8 @@ export default function LivingWorld() {
       setOnline(true); setDiag('');
       const silence = Number(response?.silence_ms || 0);
       if (silence > 0) await new Promise(r => setTimeout(r, Math.min(silence, 3500)));
-      stateBus.patch({ ...buildPresencePatch(response), thinking: false });
-      const newEmo = String(response?.twin_emotional_state?.current_emotion || response?.emotion?.primary || response?.emotion || 'calm').toLowerCase();
-      try {
-        presenceEngine.setEmotion(newEmo, Number(response?.intensity ?? 0.6));
-        presenceEngine.addMicroExpression(newEmo.includes('joy') ? 'head_nod' : 'membrane_shiver', 0.7);
-        if (response?.memory_surfaced) presenceEngine.triggerMemoryEcho();
-      } catch {}
+      stateBus.patch({ thinking: false });
+      const newEmo = String(response?.emotion?.primaryEmotion || response?.twin_emotional_state?.current_emotion || response?.emotion?.primary || response?.emotion || 'calm').toLowerCase();
       if (newEmo !== lastEmotion.current) { lastEmotion.current = newEmo; emotionHaptic(newEmo); }
       if (response?.memory_surfaced) { EventBus.emit('MEMORY_SURFACED', {}); light('memory', 2000); }
       if (response?.goals_updated) light('goals', 2000);
@@ -282,15 +244,11 @@ export default function LivingWorld() {
       const replyText = String(response?.reply || response?.text || '...');
       setMessages(prev => prev.map(m => m.id === tid ? { ...m, text: replyText } : m));
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+      // Voice output is requested from the voice adapter. Do not infer a
+      // speaking state or waveform from reply length: only real voice-engine
+      // lifecycle events may assert speaking/voiceLevel.
       try {
-        if (replyText.length > 2) {
-          getVoice()?.speak?.(replyText, newEmo);
-          presenceBridge.speak(4000);
-          const dur = Math.min(replyText.length * 60, 8000);
-          stateBus.patch({ speaking: true, voiceLevel: 0.8 });
-          setTimeout(() => stateBus.patch({ voiceLevel: 0.45 }), dur * 0.5);
-          setTimeout(() => stateBus.patch({ speaking: false, voiceLevel: 0 }), dur);
-        }
+        if (replyText.length > 2) getVoice()?.speak?.(replyText, newEmo);
       } catch {}
       if (gating?.ads_in_chat) showInterstitial();
       track('message_sent', { emotion: newEmo, lang });
@@ -319,12 +277,12 @@ export default function LivingWorld() {
         setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'twin', text: `👁 ${r.scene}${r.place ? `\n📍 ${r.place}` : ''}` }]);
         light('intuition'); light('memory');
         try { getVoice()?.speak?.(r.scene, 'curious'); } catch {}
-        stateBus.patch({ curiosity: 0.85, thinking: false, camera: false });
+        stateBus.patch({ thinking: false, camera: false });
       }
     } catch (e: any) {
       setDiag('VISION: ' + String(e?.message || e).slice(0, 60));
-      stateBus.patch({ thinking: false });
-    } finally { setIsVisioning(false); }
+      stateBus.patch({ thinking: false, camera: false });
+    } finally { setIsVisioning(false); stateBus.patch({ camera: false }); }
   }, [userId, lang, isVisioning, light]);
 
   const toggleListening = useCallback(async () => {

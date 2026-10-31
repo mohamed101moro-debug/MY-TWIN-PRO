@@ -4,6 +4,7 @@ Smart Nudge Engine v2.0 – محرك التحفيز الذكي
 يولد تحديات يومية وأسبوعية بناءً على TCMA (العواطف، الهوية، الأهداف).
 يتكامل مع التوصيات الموحدة ومحرك الاستباقية.
 """
+import hashlib
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
@@ -14,7 +15,7 @@ try:
     from app.memory.relationship.person_node import get_person_network
     from app.infrastructure.database.supabase_client import get_db
     TCMA_AVAILABLE = True
-except ImportError:
+except Exception:
     TCMA_AVAILABLE = False
 
 logger = logging.getLogger("challenges")
@@ -75,10 +76,12 @@ async def get_daily_challenge(user_id: str, lang: str = "ar") -> Optional[Dict[s
             logger.error(f"TCMA challenge failed: {e}")
     
     # 4. اختيار عشوائي من المجموعة المناسبة
-    import random
     today = datetime.now(timezone.utc).date().isoformat()
     pool = CHALLENGE_POOL.get(phase, CHALLENGE_POOL["introduction"])
-    seed = hash(f"{user_id}:{today}") % len(pool)
+    # Python's hash() is process-randomized; a daily challenge must survive
+    # Railway restarts and remain identical for the same user and UTC date.
+    digest = hashlib.sha256(f"{user_id}:{today}".encode("utf-8")).digest()
+    seed = int.from_bytes(digest[:8], "big") % len(pool)
     challenge = pool[seed]
     
     return {

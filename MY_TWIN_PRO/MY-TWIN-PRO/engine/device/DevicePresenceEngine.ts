@@ -3,7 +3,7 @@ export interface DeviceSensors {
   accelerometer: { x: number; y: number; z: number } | null;
   gyroscope: { x: number; y: number; z: number } | null;
   barometer: number | null; proximity: number | null; lightLevel: number | null; audioLevel: number;
-  weatherCondition: 'clear' | 'rain' | 'storm' | 'unknown';
+  weatherCondition: 'clear' | 'rain' | 'storm' | 'unknown'; isCharging: boolean;
   stepCount: number; deviceBattery: number | null; isBatteryLow: boolean;
   isCameraReady: boolean; isMicrophoneReady: boolean; hasUserPermission: boolean;
   faceDetected: boolean; faceBounds: { x: number; y: number; width: number; height: number } | null;
@@ -13,7 +13,7 @@ export interface DeviceSensors {
 export class DevicePresenceEngine {
   private sensors: DeviceSensors = {
     accelerometer: null, gyroscope: null, barometer: null, proximity: null, lightLevel: null, audioLevel: 0,
-    weatherCondition: 'unknown', stepCount: 0, deviceBattery: 100, isBatteryLow: false,
+    weatherCondition: 'unknown', stepCount: 0, deviceBattery: 100, isBatteryLow: false, isCharging: false,
     isCameraReady: false, isMicrophoneReady: false, hasUserPermission: false,
     faceDetected: false, faceBounds: null, userWalking: false, userRunning: false, userStationary: true,
     isNightTime: false, isQuietTime: false,

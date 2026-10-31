@@ -59,7 +59,7 @@ class Config:
     
     # == تطبيق ==
     ALLOWED_ORIGINS: List[str] = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",")]
-    EXPO_PUBLIC_API_URL: str = os.getenv("EXPO_PUBLIC_API_URL", "https://mytwin.app")
+    EXPO_PUBLIC_API_URL: str = os.getenv("EXPO_PUBLIC_API_URL", "https://live-game-show-production-317b.up.railway.app")
     
     # == حدود الاستخدام (افتراضية) ==
     DAILY_MESSAGES_LIMIT: int = int(os.getenv("DAILY_MESSAGES_LIMIT", "15"))

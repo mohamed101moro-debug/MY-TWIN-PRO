@@ -1,63 +1,73 @@
+import { AppState, AppStateStatus } from 'react-native';
 import { EventBus } from './EventBus';
 import { stateBus } from './StateBus';
-import { devicePresenceEngine } from '../../engine/device/DevicePresenceEngine';
 import { presenceEngine } from '../../engine/presence/PresenceEngine';
+import { presenceClient } from './PresenceClient';
+import { voiceEngine } from '../../engine/voice/VoiceEngine';
 export { presenceEngine };
-const clamp01 = (n: unknown, fallback = 0) => { const v = Number(n); return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback; };
+
 class PresenceBridge {
-  private sensorTimer: ReturnType<typeof setInterval> | null = null;
   private unsubs: Array<() => void> = [];
-  private _lastPresentTs = 0;
+  private appStateSub: { remove: () => void } | null = null;
+  private touchTimer: ReturnType<typeof setTimeout> | null = null;
+  private active = false;
+
   start(): void {
-    if (this.sensorTimer) return;
+    if (this.active) return;
+    this.active = true;
     presenceEngine.start();
-    this.sensorTimer = setInterval(() => {
-      const sensors = devicePresenceEngine.getSensors();
-      const current = stateBus.getState();
-      const acc = sensors.accelerometer;
-      const magnitude = acc ? Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z) : 1;
-      stateBus.patch({
-        movement: clamp01(Math.abs(magnitude - 1) * 2.2),
-        proximity: sensors.proximity == null ? current.proximity : clamp01(1 - sensors.proximity / 100, current.proximity),
-        ambientLight: sensors.lightLevel == null ? current.ambientLight : clamp01(Math.log10(Math.max(1, sensors.lightLevel) + 1) / 4, current.ambientLight),
-        userPresent: sensors.faceDetected ? (() => { this._lastPresentTs = Date.now(); return true; })() : (Date.now() - this._lastPresentTs < 20000),
-        voiceLevel: clamp01(sensors.audioLevel, current.voiceLevel),
-      });
-    }, 250);
-    this.unsubs.push(EventBus.on('AI_START_THINKING', () => stateBus.patch({ thinking: true, focus: Math.max(stateBus.getState().focus, 0.72), arousal: Math.max(stateBus.getState().arousal, 0.48) })));
+    void presenceClient.start();
+    this.appStateSub = AppState.addEventListener('change', (state) => this.handleAppState(state));
+    this.unsubs.push(EventBus.on('AI_START_THINKING', () => stateBus.patch({ thinking: true, focus: Math.max(Number(stateBus.getState().focus ?? 0.5), 0.72) })));
     this.unsubs.push(EventBus.on('AI_FINISH_THINKING', () => stateBus.patch({ thinking: false })));
-    this.unsubs.push(EventBus.on('USER_SEND_MESSAGE', () => { stateBus.patch({ listening: true }); setTimeout(() => stateBus.patch({ listening: false }), 3000); }));
-    this.unsubs.push(EventBus.on('MEMORY_SURFACED', (_ev: any, data?: any) => {
-      const d = data ?? _ev;
-      const emotion = String(d?.emotion ?? '');
-      const bias = emotion.includes('sad') || emotion.includes('fear') ? -0.25 : emotion.includes('joy') || emotion.includes('love') ? 0.3 : 0.1;
-      stateBus.patch({ memoryLevel: 0.85, curiosity: Math.max(stateBus.getState().curiosity, 0.62), emotionValence: bias });
+    this.unsubs.push(EventBus.on('MEMORY_SURFACED', () => {
+      // Memory is a backend cognitive fact. The client only renders its echo;
+      // it must not mutate curiosity, emotion, bond, or memory authority.
+      presenceEngine.triggerMemoryEcho();
     }));
-    this.unsubs.push(EventBus.on('MEMORY_CREATED', () => stateBus.patch({ memoryLevel: Math.min(1, stateBus.getState().memoryLevel + 0.12) })));
+    this.unsubs.push(EventBus.on('MEMORY_CREATED', () => {
+      // Presentation-only event. Canonical memory state is persisted server-side.
+    }));
+    // VoiceEngine owns real TTS lifecycle; project its actual callbacks into the canonical presence bus.
+    this.unsubs.push(EventBus.on('VOICE_SPEAKING_START', () => stateBus.patch({ speaking: true, listening: false })));
+    this.unsubs.push(EventBus.on('VOICE_SPEAKING_END', () => stateBus.patch({ speaking: false })));
+    this.unsubs.push(EventBus.on('VOICE_LISTENING_START', () => stateBus.patch({ listening: true, speaking: false })));
+    this.unsubs.push(EventBus.on('VOICE_LISTENING_END', () => stateBus.patch({ listening: false })));
   }
+
+  private handleAppState(next: AppStateStatus): void {
+    if (!this.active) return;
+    // `inactive` is a transient iOS state (Control Center, notification shade,
+    // interruptions). Keep the runtime alive; only suspend on actual background.
+    if (next === 'active') {
+      presenceEngine.start(); void presenceClient.start();
+    } else if (next === 'background') {
+        // Backgrounding is a real interruption boundary: stop active media/recording and
+      // let VoiceEngine emit lifecycle END events before suspending presence sensors.
+      voiceEngine.stopSpeaking();
+      void voiceEngine.stopListening();
+      presenceClient.stop(); presenceEngine.stop();
+      stateBus.patch({ thinking: false, listening: false, speaking: false });
+    }
+  }
+
   touch(): void {
-    stateBus.patch({ touch: 1, connection: Math.min(1, stateBus.getState().connection + 0.025) });
+    stateBus.patch({ touch: 1 });
     presenceEngine.addMicroExpression('head_nod', 0.35);
-    setTimeout(() => stateBus.patch({ touch: 0 }), 1200);
+    if (this.touchTimer) clearTimeout(this.touchTimer);
+    this.touchTimer = setTimeout(() => stateBus.patch({ touch: 0 }), 1200);
   }
-  speak(durationMs = 4000): void { stateBus.patch({ speaking: true }); setTimeout(() => stateBus.patch({ speaking: false }), durationMs); }
-  setGaze(x: number, y: number): void { stateBus.patch({ gazeX: Math.max(-1, Math.min(1, x)), gazeY: Math.max(-1, Math.min(1, y)) }); }
+
+  /** @deprecated Speaking state must come from VoiceEngine lifecycle events, never a guessed duration. */
+  speak(_durationMs?: number): void { /* intentionally inert: no synthetic speech state */ }
+  setGaze(x: number, y: number): void { stateBus.patch({ gazeX: Math.max(-1, Math.min(1, Number(x) || 0)), gazeY: Math.max(-1, Math.min(1, Number(y) || 0)) }); }
+
   stop(): void {
-    if (this.sensorTimer) clearInterval(this.sensorTimer);
-    this.sensorTimer = null;
-    this.unsubs.forEach((u) => { try { u(); } catch {} });
-    this.unsubs = [];
-    presenceEngine.stop();
+    this.active = false;
+    this.appStateSub?.remove(); this.appStateSub = null;
+    this.unsubs.forEach((u) => { try { u(); } catch {} }); this.unsubs = [];
+    if (this.touchTimer) clearTimeout(this.touchTimer); this.touchTimer = null;
+    presenceClient.stop(); presenceEngine.stop();
   }
 }
 export const presenceBridge = new PresenceBridge();
-
-/**
- * جدول توحيد الأحداث (EventBus × StateBus) — نقطة الدمج الوحيدة:
- * AI_START_THINKING  → thinking:true + focus↑ + arousal↑
- * AI_FINISH_THINKING → thinking:false
- * USER_SEND_MESSAGE  → listening:true (3ث)
- * MEMORY_SURFACED    → memoryLevel:0.85 + curiosity↑ + emotionValence(bias)
- * MEMORY_CREATED     → memoryLevel+0.12
- * لا يُسمح لأي مكوّن بصري بالاشتراك في EventBus مباشرة — الكل يقرأ StateBus/PresenceState.
- */

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { Audio } from 'expo-av';
 export type VoiceState = 'silent' | 'calm' | 'engaged' | 'energetic';
 function clamp(value: number, min = 0, max = 1) { return Math.min(max, Math.max(min, value)); }
@@ -46,7 +47,21 @@ export function useVoicePresence() {
     } catch { return null; }
   }, []);
   const toggleRecording = useCallback(() => (isRecording ? stopRecording() : startRecording()), [isRecording, startRecording, stopRecording]);
-  useEffect(() => () => { recordingRef.current?.stopAndUnloadAsync().catch(() => undefined); }, []);
+  useEffect(() => {
+    const onAppState = (next: AppStateStatus) => {
+      // This hook owns a screen-scoped Expo recording, separate from VoiceEngine.
+      // Explicitly release it when the app backgrounds; don't kill it for transient
+      // iOS `inactive` interruptions.
+      if (next === 'background') void stopRecording();
+    };
+    const sub = AppState.addEventListener('change', onAppState);
+    return () => {
+      sub.remove();
+      const recording = recordingRef.current;
+      recordingRef.current = null;
+      if (recording) recording.stopAndUnloadAsync().catch(() => undefined);
+    };
+  }, [stopRecording]);
   return { isRecording, level, voiceState: stateFromLevel(level), permissionDenied, startRecording, stopRecording, toggleRecording };
 }
 export default useVoicePresence;

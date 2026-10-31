@@ -11,7 +11,7 @@ except ImportError:
     DB_AVAILABLE = False
 
 logger = logging.getLogger("referral_service")
-BASE_URL = os.getenv("EXPO_PUBLIC_API_URL", "https://mytwin.app")
+BASE_URL = os.getenv("EXPO_PUBLIC_API_URL", "https://live-game-show-production-317b.up.railway.app")
 
 def generate_referral_code(uid: str) -> str:
     return "MT" + hashlib.sha256(uid.encode()).hexdigest()[:6].upper()

@@ -134,7 +134,7 @@ class InteractionPipelineEngine:
     async def _life_observation(self, user_id, steps_today, message) -> str:
         yesterday = 0
         try:
-            mem = await self.ctx.memory_retrieve(user_id, "[ENGINE:life_log]", limit=3)
+            mem = {"memories": await self.ctx.engine_memory_retrieve(user_id, "life_log", limit=3)}
             for m in mem.get("memories", []):
                 s = re.search(r'"steps":\s*(\d+)', m.get("content", ""))
                 if s: yesterday = max(yesterday, int(s.group(1)))

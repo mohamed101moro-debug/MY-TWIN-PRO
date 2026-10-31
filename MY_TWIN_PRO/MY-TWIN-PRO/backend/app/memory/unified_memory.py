@@ -57,12 +57,14 @@ class UnifiedMemoryEngine:
             logger.error(f"store_engine_output failed: {e}")
             return None
 
-    async def retrieve(self, user_id: str, query: str, current_emotion: str = "neutral", limit: int = 5) -> Dict[str, Any]:
+    async def retrieve(self, user_id: str, query: str, current_emotion: str = "neutral", limit: int = 5, include_engine_outputs: bool = False) -> Dict[str, Any]:
         if not DB_AVAILABLE: return {"memories": [], "count": 0}
         try:
             db = get_db()
             result = db.table(TABLE_NAME).select("*").eq("user_id", user_id).order("created_at", desc=True).limit(50).execute()
             memories = result.data or []
+            if not include_engine_outputs:
+                memories = [m for m in memories if not str(m.get("expressed_text") or "").startswith("[ENGINE:")]
             try:
                 from app.features.economy.tier_gate import memory_days
                 _md = await memory_days(user_id, db)
@@ -128,7 +130,7 @@ class UnifiedMemoryEngine:
         except: return 0
 
     async def get_engine_outputs(self, user_id, engine_name, limit=5):
-        return (await self.retrieve(user_id, f"[ENGINE:{engine_name}]", limit=limit)).get("memories", [])
+        return (await self.retrieve(user_id, f"[ENGINE:{engine_name}]", limit=limit, include_engine_outputs=True)).get("memories", [])
     async def get_capability_memories(self, user_id, capability, limit=10):
         return (await self.retrieve(user_id, capability, limit=limit)).get("memories", [])
     async def get_on_this_day(self, user_id, limit=5):

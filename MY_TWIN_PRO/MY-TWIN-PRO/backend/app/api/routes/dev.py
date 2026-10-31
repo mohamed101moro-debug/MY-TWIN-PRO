@@ -13,7 +13,7 @@ from app.infrastructure.database.supabase_client import get_db
 logger = logging.getLogger("dev_routes")
 router = APIRouter(prefix="/api/dev", tags=["dev"])
 
-DEV_SECRET = os.getenv("DEV_SECRET", "devsecret123")
+DEV_SECRET = os.getenv("DEV_SECRET")
 
 class DevTokenRequest(BaseModel):
     secret: str 
@@ -23,7 +23,7 @@ class DevTokenRequest(BaseModel):
 @router.post("/token")
 async def get_dev_token(body: DevTokenRequest):
     """إنشاء أو تسجيل دخول مستخدم اختبار"""
-    if body.secret != DEV_SECRET:
+    if not DEV_SECRET or body.secret != DEV_SECRET:
         raise HTTPException(403, "Wrong dev secret")
     
     db = get_db()
@@ -87,7 +87,7 @@ async def test_tcma(user_id: str):
 
 @router.post("/unlock-tier")
 async def unlock_tier(body: dict):
-    if body.get("secret") != os.getenv("DEV_SECRET", "devsecret123"):
+    if not DEV_SECRET or body.get("secret") != DEV_SECRET:
         raise HTTPException(403, "Wrong dev secret")
     get_db().table("profiles").update({"tier": body.get("tier", "yearly")}).eq("id", body["user_id"]).execute()
     try:
