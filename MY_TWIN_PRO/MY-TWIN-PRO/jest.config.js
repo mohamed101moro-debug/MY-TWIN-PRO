@@ -22,6 +22,7 @@ module.exports = {
     '^react-native-reanimated$': '<rootDir>/__mocks__/react-native-reanimated.js',
     '^react-native-safe-area-context$': '<rootDir>/__mocks__/react-native-safe-area-context.js',
     '^@react-native-async-storage/async-storage$': '<rootDir>/__mocks__/async-storage.js',
+    '^expo-secure-store$': '<rootDir>/__mocks__/expo-secure-store.js',
     '^expo-localization$': '<rootDir>/__mocks__/expo-localization.js',
     '^expo-router$': '<rootDir>/__mocks__/expo-router.js',
     '^expo-status-bar$': '<rootDir>/__mocks__/expo-status-bar.js',

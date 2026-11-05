@@ -6,6 +6,10 @@ import asyncio
 import uuid
 from datetime import datetime, timezone
 
+# Historical suites depend on removed modules or external Supabase state.
+# Keep them visible in the quarantine document, but out of automatic collection.
+collect_ignore = ["test_api_routes.py", "test_memory_engine.py"]
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Create event loop for async tests."""
