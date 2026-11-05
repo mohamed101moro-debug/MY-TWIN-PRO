@@ -3,8 +3,7 @@
  * عميل HTTP متكامل مع timeout + retry + streaming
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 
 const BASE_URL = 'https://live-game-show-production-317b.up.railway.app';
 
@@ -14,23 +13,23 @@ const BASE_URL = 'https://live-game-show-production-317b.up.railway.app';
 const TIMEOUT_MS       = 12000; // 12 ثانية - يكفي لـ Railway cold start
 const RETRY_COUNT      = 2;
 const RETRY_DELAY_MS   = 800;
-const TOKEN_KEY        = 'mytwin-token';
+const TOKEN_KEY        = 'mytwin-secure-token';
 
 // ================================================================
 // إدارة الـ Token
 // ================================================================
 export async function setToken(token: string): Promise<void> {
-  try { await AsyncStorage.setItem(TOKEN_KEY, token); }
+  try { await SecureStore.setItemAsync(TOKEN_KEY, token, { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK }); }
   catch (e) { console.warn('[HTTP] setToken failed:', e); }
 }
 
 export async function removeToken(): Promise<void> {
-  try { await AsyncStorage.removeItem(TOKEN_KEY); }
+  try { await SecureStore.deleteItemAsync(TOKEN_KEY); }
   catch (e) { console.warn('[HTTP] removeToken failed:', e); }
 }
 
 async function getToken(): Promise<string | null> {
-  try { return await AsyncStorage.getItem(TOKEN_KEY); }
+  try { return await SecureStore.getItemAsync(TOKEN_KEY); }
   catch { return null; }
 }
 

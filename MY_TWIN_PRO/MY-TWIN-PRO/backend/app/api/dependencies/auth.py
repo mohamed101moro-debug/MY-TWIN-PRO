@@ -45,6 +45,7 @@ async def get_current_user_id(
         if payload:
             user_id = extract_user_id(payload)
             if user_id:
+                await _require_active_profile(user_id)
                 return user_id
 
     # 2. التحقق عبر Supabase
@@ -53,11 +54,29 @@ async def get_current_user_id(
         db = get_db()
         user_resp = db.auth.get_user(token)
         if user_resp and user_resp.user and user_resp.user.id:
+            await _require_active_profile(user_resp.user.id)
             return user_resp.user.id
     except Exception as e:
         logger.error(f"Supabase auth failed: {e}")
 
     raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+async def _require_active_profile(user_id: str) -> None:
+    """Fail closed for suspended, missing, or deletion-pending accounts."""
+    try:
+        from app.infrastructure.database.supabase_client import get_db
+        profile = get_db().table("profiles").select("status,deleted_at").eq("id", user_id).limit(1).execute()
+        row = (profile.data or [None])[0]
+        if not row:
+            raise HTTPException(status_code=403, detail="الحساب غير مهيأ للاستخدام")
+        if row.get("status") != "active" or row.get("deleted_at"):
+            raise HTTPException(status_code=403, detail="الحساب غير نشط")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("active profile check failed: %s", exc)
+        raise HTTPException(status_code=503, detail="تعذر التحقق من حالة الحساب")
 
 
 async def _db_tier(user_id: str):
@@ -86,6 +105,7 @@ async def get_current_user(
     if SECURITY_AVAILABLE:
         context = get_user_context(token)
         if context.get("authenticated"):
+            await _require_active_profile(context.get("user_id"))
             try:
                 _live = await _db_tier(context.get("user_id"))
                 if _live:
@@ -101,6 +121,7 @@ async def get_current_user(
         user_resp = db.auth.get_user(token)
         if user_resp and user_resp.user:
             user = user_resp.user
+            await _require_active_profile(user.id)
             return {
                 "authenticated": True,
                 "user_id": user.id,

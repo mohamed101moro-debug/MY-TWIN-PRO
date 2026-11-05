@@ -58,9 +58,8 @@ async def signup(body: SignupBody):
             raise HTTPException(400, "تعذر إنشاء الحساب. تحقق من البريد وكلمة المرور.")
     user_id = result.user.id if (result and result.user) else None
     session = result.session if result else None
-    if user_id and service_db is not None:
-        try: service_db.auth.admin.update_user_by_id(user_id, {"email_confirm": True})
-        except Exception: pass
+    # Email confirmation is owned by Supabase Auth. Never confirm users
+    # administratively from an application signup request.
     if not session:
         try:
             lr = db.auth.sign_in_with_password({"email": email, "password": body.password})
@@ -68,9 +67,11 @@ async def signup(body: SignupBody):
             user_id = user_id or (lr.user.id if lr.user else None)
         except Exception:
             session = None
-    if not session or not user_id:
+    if not user_id:
         raise HTTPException(400, "هذا البريد مسجل بالفعل — استخدم تسجيل الدخول.")
-    _ensure_profile_best_effort(service_db, session.access_token, user_id, email, body.twin_name, body.lang)
+    _ensure_profile_best_effort(service_db, session.access_token if session else None, user_id, email, body.twin_name, body.lang)
+    if not session:
+        return {"status": "pending", "requires_email_confirmation": True, "user_id": user_id, "token": None}
     logger.info(f"signup ok: {email}")
     return {"token": session.access_token, "user_id": user_id, "onboarded": False}
 

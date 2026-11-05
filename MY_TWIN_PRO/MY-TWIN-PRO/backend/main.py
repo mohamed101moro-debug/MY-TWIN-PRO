@@ -111,6 +111,19 @@ async def health():
     return JSONResponse(content={"api": "healthy", "version": "23.0.0",
         "kernel": st["kernel"], "engines": len(st["engines"]),
         "disabled": [e for e, d in st["engines"].items() if d["disabled"]]})
+
+@app.get("/ready")
+async def ready():
+    """Deployment readiness: health alone is insufficient for Railway routing."""
+    checks = {
+        "supabase_configured": bool(config.SUPABASE_URL and config.SUPABASE_SERVICE_KEY),
+        "api_url_configured": bool(config.EXPO_PUBLIC_API_URL.startswith("https://")),
+    }
+    ready_state = all(checks.values())
+    return JSONResponse(
+        status_code=200 if ready_state else 503,
+        content={"ready": ready_state, "service": "my-twin", "checks": checks},
+    )
 @app.get("/admin/kernel")
 async def kernel_status():
     from app.core.soul_core import soul_kernel
