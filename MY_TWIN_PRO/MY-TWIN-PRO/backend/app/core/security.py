@@ -14,7 +14,11 @@ logger = logging.getLogger("security")
 
 # الإعدادات
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
-SUPABASE_JWT_ALGORITHMS = ["HS256", "RS256"]  # دعم خوارزميات متعددة
+SUPABASE_JWT_ALGORITHMS = [
+    algorithm.strip()
+    for algorithm in os.getenv("SUPABASE_JWT_ALGORITHMS", "HS256").split(",")
+    if algorithm.strip()
+]
 TOKEN_AUDIENCE = os.getenv("SUPABASE_JWT_AUD", "authenticated")
 
 def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
